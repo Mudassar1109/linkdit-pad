@@ -1,0 +1,277 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+
+  --font-ui: "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui;
+  --font-editor: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", ui-monospace, monospace;
+  --font-urdu: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", serif;
+
+  --background: 0 0% 100%;
+  --foreground: 222 20% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 20% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 20% 12%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 189 94% 43%;
+  --accent-foreground: 0 0% 100%;
+  --success: 160 84% 39%;
+  --warning: 38 92% 50%;
+  --danger: 0 84% 60%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 221 83% 53%;
+
+  --selection: 221 83% 53%;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: 222 24% 8%;
+  --foreground: 210 20% 96%;
+  --card: 222 22% 10%;
+  --card-foreground: 210 20% 96%;
+  --popover: 222 22% 10%;
+  --popover-foreground: 210 20% 96%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 47% 11%;
+  --accent: 189 94% 55%;
+  --accent-foreground: 222 47% 11%;
+  --success: 160 84% 45%;
+  --warning: 38 92% 55%;
+  --danger: 0 84% 65%;
+  --muted: 222 18% 15%;
+  --muted-foreground: 217 10% 65%;
+  --border: 222 16% 18%;
+  --input: 222 16% 18%;
+  --ring: 217 91% 60%;
+
+  --selection: 217 91% 60%;
+}
+
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color 200ms ease-out,
+              border-color 200ms ease-out,
+              color 200ms ease-out,
+              fill 200ms ease-out,
+              stroke 200ms ease-out,
+              box-shadow 200ms ease-out !important;
+}
+
+* {
+  @apply border-border;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  @apply bg-background text-foreground font-sans antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+.glass-surface {
+  background: hsl(var(--card) / 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid hsl(var(--border) / 0.6);
+}
+
+[dir="rtl"] {
+  text-align: right;
+}
+
+.editor-urdu {
+  font-family: var(--font-urdu);
+  line-height: 2.1;
+  direction: rtl;
+}
+
+::selection {
+  background: hsl(var(--selection) / 0.3);
+}
+
+.ProseMirror ::selection {
+  background: hsl(var(--selection) / 0.35);
+}
+
+.ProseMirror {
+  caret-color: hsl(var(--foreground));
+}
+
+.ProseMirror-focused {
+  outline: none;
+}
+
+.ProseMirror p {
+  color: hsl(var(--foreground));
+}
+
+.ProseMirror h1, .ProseMirror h2, .ProseMirror h3,
+.ProseMirror h4, .ProseMirror h5, .ProseMirror h6 {
+  color: hsl(var(--foreground));
+}
+
+.ProseMirror blockquote {
+  border-left: 3px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  padding-left: 1rem;
+}
+
+.ProseMirror pre {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+}
+
+.ProseMirror code {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  border-radius: 3px;
+  padding: 0.15em 0.3em;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  overflow: hidden;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}
+
+.ProseMirror th {
+  background: hsl(var(--muted));
+  font-weight: 600;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid hsl(var(--border));
+  margin: 1rem 0;
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.ProseMirror a {
+  color: hsl(var(--primary));
+  cursor: pointer;
+}
+
+.ProseMirror a:hover {
+  text-decoration: underline;
+}
+
+.ProseMirror .has-focus {
+  outline: 2px solid hsl(var(--ring) / 0.3);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.45);
+  background-clip: padding-box;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.25) transparent;
+}
+
+.ProseMirror ul {
+  list-style: disc;
+  padding-left: 1.5em;
+}
+.ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+.ProseMirror li {
+  margin-bottom: 0.15em;
+}
+.ProseMirror ul ul,
+.ProseMirror ol ul {
+  list-style: circle;
+}
+.ProseMirror ol ol,
+.ProseMirror ul ol {
+  list-style: lower-alpha;
+}
+
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.ProseMirror ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+  user-select: none;
+  cursor: pointer;
+}
+.ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+  accent-color: hsl(var(--primary));
+}
+.ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
