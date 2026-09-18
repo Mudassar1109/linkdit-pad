@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Monitor, Palette, Type, Edit3, Keyboard } from "lucide-react";
+import { X, Monitor, Palette, Type, Edit3, Keyboard, DatabaseBackup } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useBackupStore } from "@/store/useBackupStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ const SECTIONS = [
   { id: "themes", label: "Themes", icon: Palette },
   { id: "fonts", label: "Fonts", icon: Type },
   { id: "editor", label: "Editor", icon: Edit3 },
+  { id: "backup", label: "Backup", icon: DatabaseBackup },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
 ];
 
@@ -41,7 +43,8 @@ const THEME_MODES = [
 export function SettingsPanel({ isOpen, onClose }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = useState("general");
   const { general, appearance, editor, setGeneral, setAppearance, setEditor } = useSettingsStore();
-  const { themeMode, setThemeMode } = useThemeStore();
+  const themeMode = useThemeStore((s) => s.themeMode);
+  const setThemeMode = useThemeStore((s) => s.setThemeMode);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -141,39 +144,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsDialogProps) {
 
                 {activeSection === "appearance" && (
                   <div className="space-y-4">
-                    <SettingsSection title="Theme">
-                      <div className="flex gap-2">
-                        {THEME_MODES.map((mode) => (
-                          <button
-                            key={mode.id}
-                            onClick={() => setThemeMode(mode.id)}
-                            className={cn(
-                              "flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all",
-                              themeMode === mode.id ? "border-primary bg-primary/10" : "border-border hover:border-muted-foreground/30"
-                            )}
-                          >
-                            <span className="text-lg">{mode.icon}</span>
-                            <span className="text-xs font-medium">{mode.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </SettingsSection>
-                    <SettingsSection title="Accent Color">
-                      <div className="flex flex-wrap gap-2">
-                        {ACCENT_COLORS.map((color) => (
-                          <button
-                            key={color.id}
-                            onClick={() => setAppearance({ accentColor: color.value })}
-                            className={cn(
-                              "h-8 w-8 rounded-full transition-all",
-                              appearance.accentColor === color.value && "ring-2 ring-offset-2 ring-offset-card ring-primary scale-110"
-                            )}
-                            style={{ backgroundColor: color.value }}
-                            title={color.name}
-                          />
-                        ))}
-                      </div>
-                    </SettingsSection>
                     <SettingsSection title="Window">
                       <SettingsRow label="Corner Radius" description="Window and panel corner roundness">
                         <input type="range" min="4" max="24" value={appearance.cornerRadius} onChange={(e) => setAppearance({ cornerRadius: parseInt(e.target.value) })} className="w-24" />
@@ -185,6 +155,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsDialogProps) {
                           <option value="normal">Normal</option>
                           <option value="fast">Fast</option>
                         </select>
+                      </SettingsRow>
+                      <SettingsRow label="Status Bar" description="Show status bar">
+                        <Switch checked={appearance.showStatusBar} onCheckedChange={(c) => setAppearance({ showStatusBar: c })} />
                       </SettingsRow>
                     </SettingsSection>
                   </div>
@@ -229,6 +202,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsDialogProps) {
                   </div>
                 )}
 
+                {activeSection === "backup" && <BackupSettingsSection />}
+
                 {activeSection === "shortcuts" && (
                   <div className="space-y-4">
                     <SettingsSection title="Keyboard Shortcuts">
@@ -244,10 +219,94 @@ export function SettingsPanel({ isOpen, onClose }: SettingsDialogProps) {
                   </div>
                 )}
 
-                {(activeSection === "fonts" || activeSection === "themes") && (
-                  <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                    <p className="text-sm">Coming soon</p>
-                    <p className="text-xs mt-1">This section will be available in the next update</p>
+                {activeSection === "themes" && (
+                  <div className="space-y-4">
+                    <SettingsSection title="Theme Mode">
+                      <div className="flex gap-2">
+                        {THEME_MODES.map((mode) => (
+                          <button
+                            key={mode.id}
+                            onClick={() => { setThemeMode(mode.id); setAppearance({ themeMode: mode.id }); }}
+                            className={cn(
+                              "flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all",
+                              themeMode === mode.id ? "border-primary bg-primary/10" : "border-border hover:border-muted-foreground/30"
+                            )}
+                          >
+                            <span className="text-lg">{mode.icon}</span>
+                            <span className="text-xs font-medium">{mode.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </SettingsSection>
+                    <SettingsSection title="Accent Color">
+                      <div className="flex flex-wrap gap-2">
+                        {ACCENT_COLORS.map((color) => (
+                          <button
+                            key={color.id}
+                            onClick={() => setAppearance({ accentColor: color.value })}
+                            className={cn(
+                              "h-8 w-8 rounded-full transition-all",
+                              appearance.accentColor === color.value && "ring-2 ring-offset-2 ring-offset-card ring-primary scale-110"
+                            )}
+                            style={{ backgroundColor: color.value }}
+                            title={color.name}
+                          />
+                        ))}
+                      </div>
+                    </SettingsSection>
+                  </div>
+                )}
+
+                {activeSection === "fonts" && (
+                  <div className="space-y-4">
+                    <SettingsSection title="UI Font">
+                      <SettingsRow label="UI Font" description="Interface font family">
+                        <select className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground max-w-[200px]" value={appearance.uiFont} onChange={(e) => setAppearance({ uiFont: e.target.value })}>
+                          <option value="Segoe UI Variable">Segoe UI Variable</option>
+                          <option value="Segoe UI">Segoe UI</option>
+                          <option value="System UI">System UI</option>
+                          <option value="Inter">Inter</option>
+                          <option value="Roboto">Roboto</option>
+                          <option value="-apple-system">-apple-system</option>
+                        </select>
+                      </SettingsRow>
+                      </SettingsSection>
+                    <SettingsSection title="Editor Font">
+                      <SettingsRow label="Editor Font" description="Font used in the editor">
+                        <select className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground max-w-[200px]" value={appearance.editorFont} onChange={(e) => setAppearance({ editorFont: e.target.value })}>
+                          <option value="Segoe UI Variable Text">Segoe UI Variable Text</option>
+                          <option value="Segoe UI">Segoe UI</option>
+                          <option value="Inter">Inter</option>
+                          <option value="Roboto">Roboto</option>
+                          <option value="Lexend">Lexend</option>
+                          <option value="Open Sans">Open Sans</option>
+                        </select>
+                      </SettingsRow>
+                      <SettingsRow label="Font Size" description="Editor text size">
+                        <input type="range" min="10" max="32" value={editor.fontSize} onChange={(e) => setEditor({ fontSize: parseInt(e.target.value) })} className="w-24" />
+                        <span className="ml-2 text-xs tabular-nums text-muted-foreground min-w-[2ch]">{editor.fontSize}px</span>
+                      </SettingsRow>
+                      <SettingsRow label="Line Height" description="Editor line spacing">
+                        <input type="range" min="1.0" max="2.5" step="0.1" value={editor.lineHeight} onChange={(e) => setEditor({ lineHeight: parseFloat(e.target.value) })} className="w-24" />
+                        <span className="ml-2 text-xs tabular-nums text-muted-foreground min-w-[3ch]">{editor.lineHeight.toFixed(1)}</span>
+                      </SettingsRow>
+                      <SettingsRow label="Letter Spacing" description="Space between characters">
+                        <input type="range" min="0" max="4" step="0.5" value={editor.letterSpacing} onChange={(e) => setEditor({ letterSpacing: parseFloat(e.target.value) })} className="w-24" />
+                        <span className="ml-2 text-xs tabular-nums text-muted-foreground min-w-[2ch]">{editor.letterSpacing}px</span>
+                      </SettingsRow>
+                    </SettingsSection>
+                    <SettingsSection title="Monospace Font">
+                      <SettingsRow label="Mono Font" description="Font for code blocks">
+                        <select className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground max-w-[200px]" value={appearance.monoFont} onChange={(e) => setAppearance({ monoFont: e.target.value })}>
+                          <option value="Cascadia Code">Cascadia Code</option>
+                          <option value="JetBrains Mono">JetBrains Mono</option>
+                          <option value="Fira Code">Fira Code</option>
+                          <option value="Source Code Pro">Source Code Pro</option>
+                          <option value="Consolas">Consolas</option>
+                          <option value="Courier New">Courier New</option>
+                        </select>
+                      </SettingsRow>
+                    </SettingsSection>
                   </div>
                 )}
               </ScrollArea>
@@ -277,6 +336,53 @@ function SettingsRow({ label, description, children }: { label: string; descript
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
+function BackupSettingsSection() {
+  const settings = useBackupStore((s) => s.settings);
+  const setSettings = useBackupStore((s) => s.setSettings);
+  const runBackup = useBackupStore((s) => s.runBackup);
+  const lastBackupAt = useBackupStore((s) => s.lastBackupAt);
+
+  return (
+    <div className="space-y-4">
+      <SettingsSection title="Auto Backup">
+        <SettingsRow label="Auto Backup" description="Back up document states locally on an interval">
+          <Switch checked={settings.enabled} onCheckedChange={(c) => setSettings({ enabled: c })} />
+        </SettingsRow>
+        {settings.enabled && (
+          <SettingsRow label="Backup Interval" description="How often backups run">
+            <select
+              className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+              value={settings.intervalMinutes}
+              onChange={(e) => setSettings({ intervalMinutes: parseInt(e.target.value) })}
+              aria-label="Backup interval"
+            >
+              <option value={5}>Every 5 minutes</option>
+              <option value={15}>Every 15 minutes</option>
+              <option value={30}>Every 30 minutes</option>
+              <option value={60}>Every 60 minutes</option>
+            </select>
+          </SettingsRow>
+        )}
+        <SettingsRow
+          label="Last backup"
+          description={lastBackupAt ? new Date(lastBackupAt).toLocaleString() : "No backup created yet"}
+        >
+          <button
+            onClick={runBackup}
+            className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            <DatabaseBackup size={14} />
+            Back Up Now
+          </button>
+        </SettingsRow>
+      </SettingsSection>
+      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        Backups are stored locally on this device only. They are never uploaded anywhere. Use Tools &rarr; Backup / Recovery to view and recover backups.
+      </div>
     </div>
   );
 }

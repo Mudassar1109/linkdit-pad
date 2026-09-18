@@ -26,6 +26,7 @@ export interface DocumentMeta {
   createdAt: string;
   updatedAt: string;
   isPinned: boolean;
+  isBookmarked: boolean;
   isDirty: boolean;
 }
 
@@ -45,9 +46,20 @@ export interface TabGroup {
   splitDirection: "horizontal" | "vertical" | null;
 }
 
+export type SplitMode = "none" | "right" | "down";
+export type EditorPane = "primary" | "secondary";
+
+export interface SplitState {
+  splitMode: SplitMode;
+  secondaryTabId: string | null;
+  activePane: EditorPane;
+}
+
 export interface RecentFileEntry {
-  path: string;
+  id: string;
+  path: string | null;
   title: string;
   lastOpenedAt: string;
   isPinned: boolean;
+  isBookmarked: boolean;
 }

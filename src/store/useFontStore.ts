@@ -7,16 +7,66 @@ export interface FontEntry {
   isVariable?: boolean;
 }
 
+export interface ImportedFontEntry extends FontEntry {
+  data: string;
+  format: "truetype" | "opentype";
+}
+
+const STORAGE_KEY = "linkdit-pad-imported-fonts";
+
+function loadStoredFonts(): ImportedFontEntry[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) return JSON.parse(stored) as ImportedFontEntry[];
+  } catch {}
+  return [];
+}
+
+function persistFonts(fonts: ImportedFontEntry[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fonts));
+  } catch {}
+}
+
+const TTF_MAGIC = new Set([
+  0x00010000,
+  0x74727565,
+]);
+const OTF_MAGIC = 0x4F54544F;
+
+function validateFontHeader(buffer: ArrayBuffer, ext: string): "truetype" | "opentype" | null {
+  if (buffer.byteLength < 12) return null;
+  const view = new DataView(buffer);
+  const firstDWord = view.getUint32(0, false);
+
+  if (ext === "ttf" && TTF_MAGIC.has(firstDWord)) return "truetype";
+  if (ext === "otf" && firstDWord === OTF_MAGIC) return "opentype";
+
+  return null;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 interface FontState {
   systemFonts: FontEntry[];
   googleFonts: FontEntry[];
-  importedFonts: FontEntry[];
+  importedFonts: ImportedFontEntry[];
   recentFonts: string[];
   favoriteFonts: string[];
   isLoading: boolean;
   error: string | null;
   detectSystemFonts: () => Promise<void>;
   loadGoogleFont: (family: string) => Promise<void>;
+  importFont: () => Promise<void>;
+  removeImportedFont: (family: string) => void;
+  restoreImportedFonts: () => Promise<void>;
   addRecentFont: (family: string) => void;
   toggleFavoriteFont: (family: string) => void;
   isFavorite: (family: string) => boolean;
@@ -69,10 +119,7 @@ export const useFontStore = create<FontState>((set, get) => ({
       }
 
       if (families.size === 0) {
-        set({
-          systemFonts: getFallbackFonts(),
-          isLoading: false,
-        });
+        set({ systemFonts: getFallbackFonts(), isLoading: false });
         return;
       }
 
@@ -86,7 +133,7 @@ export const useFontStore = create<FontState>((set, get) => ({
       }
       fonts.sort((a, b) => a.family.localeCompare(b.family));
       set({ systemFonts: fonts, isLoading: false });
-    } catch (err) {
+    } catch {
       set({ systemFonts: getFallbackFonts(), isLoading: false, error: null });
     }
   },
@@ -109,6 +156,109 @@ export const useFontStore = create<FontState>((set, get) => ({
         ],
       };
     });
+  },
+
+  importFont: async () => {
+    return new Promise<void>((resolve, reject) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".ttf,.otf";
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) { resolve(); return; }
+
+        const ext = file.name.split(".").pop()?.toLowerCase();
+        if (ext !== "ttf" && ext !== "otf") {
+          set({ error: "Only TTF and OTF files are supported." });
+          reject(new Error("Invalid format"));
+          return;
+        }
+
+        const buffer = await file.arrayBuffer();
+        const format = validateFontHeader(buffer, ext);
+        if (!format) {
+          set({ error: "Invalid or corrupted font file." });
+          reject(new Error("Invalid font"));
+          return;
+        }
+
+        let family = file.name.replace(/\.\w+$/, "");
+        const existing = get().importedFonts.find((f) => f.family === family);
+        if (existing) {
+          set({ error: `Font "${family}" is already imported.` });
+          reject(new Error("Duplicate font"));
+          return;
+        }
+
+        const existingAll = get().getAllFonts();
+        if (existingAll.find((f) => f.family === family)) {
+          family = `${family} (imported)`;
+        }
+
+        const mime = format === "truetype" ? "font/ttf" : "font/otf";
+        const b64 = arrayBufferToBase64(buffer);
+        const dataUri = `data:${mime};base64,${b64}`;
+
+        try {
+          const fontFace = new FontFace(family, `url(${dataUri})`);
+          await fontFace.load();
+          document.fonts.add(fontFace);
+        } catch {
+          set({ error: "Failed to load font. The file may be corrupted." });
+          reject(new Error("Font load failed"));
+          return;
+        }
+
+        const imported: ImportedFontEntry = {
+          family,
+          category: categorizeFont(family),
+          source: "imported",
+          data: dataUri,
+          format,
+        };
+
+        set((s) => {
+          const next = [...s.importedFonts, imported];
+          persistFonts(next);
+          return { importedFonts: next, error: null };
+        });
+
+        resolve();
+      };
+      input.click();
+    });
+  },
+
+  removeImportedFont: (family) => {
+    set((s) => {
+      const next = s.importedFonts.filter((f) => f.family !== family);
+      persistFonts(next);
+      const fontFace = [...document.fonts.values()].find(
+        (ff) => ff.family.replace(/["']/g, "") === family
+      );
+      if (fontFace) document.fonts.delete(fontFace);
+      return { importedFonts: next };
+    });
+  },
+
+  restoreImportedFonts: async () => {
+    const stored = loadStoredFonts();
+    if (stored.length === 0) return;
+
+    const loaded: ImportedFontEntry[] = [];
+    for (const entry of stored) {
+      try {
+        const fontFace = new FontFace(entry.family, `url(${entry.data})`);
+        await fontFace.load();
+        document.fonts.add(fontFace);
+        loaded.push(entry);
+      } catch {
+        console.warn(`[LinkDit Pad] Failed to restore imported font: ${entry.family}`);
+      }
+    }
+    if (loaded.length > 0) {
+      set({ importedFonts: loaded });
+    }
   },
 
   addRecentFont: (family) => {

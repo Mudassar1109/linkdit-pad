@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { AppSettings, EditorSettings, AppearanceSettings, GeneralSettings, ShortcutConfig } from "@/types/settings";
 
+const STORAGE_KEY = "linkdit-pad-settings";
+
 const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   { key: "n", ctrl: true, command: "file.new", label: "New File" },
   { key: "o", ctrl: true, command: "file.open", label: "Open File" },
@@ -67,6 +69,20 @@ const DEFAULT_GENERAL: GeneralSettings = {
   startupBehavior: "new-document",
 };
 
+function loadPersisted<T>(key: string, fallback: T): T {
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) return JSON.parse(stored) as T;
+  } catch {}
+  return fallback;
+}
+
+function persist(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
 interface SettingsState extends AppSettings {
   isOpen: boolean;
   setGeneral: (general: Partial<GeneralSettings>) => void;
@@ -81,16 +97,40 @@ interface SettingsState extends AppSettings {
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   isOpen: false,
-  general: DEFAULT_GENERAL,
-  appearance: DEFAULT_APPEARANCE,
-  editor: DEFAULT_EDITOR,
+  general: loadPersisted(`${STORAGE_KEY}.general`, DEFAULT_GENERAL),
+  appearance: loadPersisted(`${STORAGE_KEY}.appearance`, DEFAULT_APPEARANCE),
+  editor: loadPersisted(`${STORAGE_KEY}.editor`, DEFAULT_EDITOR),
   shortcuts: DEFAULT_SHORTCUTS,
 
-  setGeneral: (general) => set((s) => ({ general: { ...s.general, ...general } })),
-  setAppearance: (appearance) => set((s) => ({ appearance: { ...s.appearance, ...appearance } })),
-  setEditor: (editor) => set((s) => ({ editor: { ...s.editor, ...editor } })),
+  setGeneral: (general) =>
+    set((s) => {
+      const next = { ...s.general, ...general };
+      persist(`${STORAGE_KEY}.general`, next);
+      return { general: next };
+    }),
+
+  setAppearance: (appearance) =>
+    set((s) => {
+      const next = { ...s.appearance, ...appearance };
+      persist(`${STORAGE_KEY}.appearance`, next);
+      return { appearance: next };
+    }),
+
+  setEditor: (editor) =>
+    set((s) => {
+      const next = { ...s.editor, ...editor };
+      persist(`${STORAGE_KEY}.editor`, next);
+      return { editor: next };
+    }),
+
   setShortcuts: (shortcuts) => set({ shortcuts }),
-  resetSettings: () => set({ general: DEFAULT_GENERAL, appearance: DEFAULT_APPEARANCE, editor: DEFAULT_EDITOR, shortcuts: DEFAULT_SHORTCUTS }),
+  resetSettings: () =>
+    set({
+      general: DEFAULT_GENERAL,
+      appearance: DEFAULT_APPEARANCE,
+      editor: DEFAULT_EDITOR,
+      shortcuts: DEFAULT_SHORTCUTS,
+    }),
   open: () => set({ isOpen: true }),
   close: () => set({ isOpen: false }),
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),

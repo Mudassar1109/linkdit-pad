@@ -4,11 +4,13 @@ import {
   Bold, Italic, Underline, Strikethrough, Highlighter, Palette,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, ListChecks, Table, Smile,
-  Search, Settings, Replace, Undo2, Redo2, Type,
-  Indent, Outdent, Minus,
+  Search, Settings, Replace, Undo2, Redo2, Type, CaseSensitive,
+  Indent, Outdent, Minus, X,
   Heading1, Heading2, Heading3, Quote, Code, Image,
-  Link, Subscript, Superscript, Eraser,
-  Sun, Moon
+  Link, Subscript, Superscript, Eraser, BookmarkPlus,
+  Sun, Moon, Printer, FileText,
+  SquareSplitVertical, SquareSplitHorizontal, ListTree, History,
+  DatabaseBackup, LockKeyhole, LockKeyholeOpen,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -16,18 +18,29 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useEditorBridge } from "@/store/useEditorBridge";
-import { useEditorStore } from "@/store/useEditorStore";
+import { useEditorStore, getFocusedPaneTabId } from "@/store/useEditorStore";
 import { useCommandPaletteStore } from "@/store/useCommandPaletteStore";
 import { useSearchStore } from "@/store/useSearchStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useThemeStore } from "@/store/useThemeStore";
+import { useConfirmStore } from "@/store/useConfirmStore";
+import { useToastStore } from "@/store/useToastStore";
 import { useFontStore, type FontEntry } from "@/store/useFontStore";
+import { useRecentFilesStore } from "@/store/useRecentFilesStore";
+import { useVersionHistoryStore } from "@/store/useVersionHistoryStore";
+import { useBackupStore } from "@/store/useBackupStore";
+import { useLockStore } from "@/store/useLockStore";
+import { useOutlineStore } from "@/store/useOutlineStore";
 import type { EditorMode } from "@/types/editor";
+import { addBookmarkAtCursor } from "@/lib/bookmarks";
+import { htmlToPlainText } from "@/lib/htmlToText";
 import {
   getFormatFromPath, getSaveFilters, getOpenFilters, getBrowserAccept,
-  prepareContentForSave, deserializeLdp, getFormatExtension, getFormatMimeType,
+  prepareContentForSave, getFormatExtension, getFormatMimeType,
 } from "@/lib/fileFormats";
+import { getLoader } from "@/lib/loaders";
 
 interface ToolbarButtonProps {
   icon: React.ElementType;
@@ -103,12 +116,15 @@ function FontSelector() {
   const recentFonts = useFontStore((s) => s.recentFonts);
   const favoriteFonts = useFontStore((s) => s.favoriteFonts);
   const isLoading = useFontStore((s) => s.isLoading);
+  const importedFonts = useFontStore((s) => s.importedFonts);
   const loadGoogleFont = useFontStore((s) => s.loadGoogleFont);
+  const importFont = useFontStore((s) => s.importFont);
+  const removeImportedFont = useFontStore((s) => s.removeImportedFont);
   const addRecentFont = useFontStore((s) => s.addRecentFont);
   const toggleFavoriteFont = useFontStore((s) => s.toggleFavoriteFont);
   const isFavorite = useFontStore((s) => s.isFavorite);
 
-  const allFonts = [...systemFonts, ...googleFonts];
+  const allFonts = [...systemFonts, ...googleFonts, ...importedFonts];
 
   const getDisplayFonts = (): FontEntry[] => {
     if (category === "recent") {
@@ -170,8 +186,8 @@ function FontSelector() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 font-mono text-xs">
-          <Type size={16} />
+        <Button variant="ghost" size="icon" className="h-8 w-8 font-mono text-xs" aria-label="Font Family" title="Font Family">
+          <CaseSensitive size={16} />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-2">
@@ -222,13 +238,23 @@ function FontSelector() {
                     {cat}
                   </div>
                   {fonts.map((f) => (
-                    <FontItem
-                      key={f.family}
-                      family={f.family}
-                      isFav={isFavorite(f.family)}
-                      onSelect={() => handleSelectFont(f.family)}
-                      onToggleFav={() => toggleFavoriteFont(f.family)}
-                    />
+                    <div key={f.family} className="group flex items-center gap-1">
+                      <FontItem
+                        family={f.family}
+                        isFav={isFavorite(f.family)}
+                        onSelect={() => handleSelectFont(f.family)}
+                        onToggleFav={() => toggleFavoriteFont(f.family)}
+                      />
+                      {f.source === "imported" && (
+                        <button
+                          onClick={() => removeImportedFont(f.family)}
+                          className="shrink-0 h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Remove imported font"
+                        >
+                          <X size={10} />
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               ))}
@@ -251,6 +277,14 @@ function FontSelector() {
               ))}
             </div>
           )}
+
+          <button
+            onClick={importFont}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+          >
+            <FilePlus size={14} />
+            Import Font (TTF/OTF)
+          </button>
         </div>
       </PopoverContent>
     </Popover>
@@ -284,8 +318,8 @@ function FontSizeSelector() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs font-bold">
-          T
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs font-bold" aria-label="Font Size" title="Font Size">
+          <Type size={16} />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-28 p-1">
@@ -430,46 +464,48 @@ function TableMenu() {
   );
 }
 
-export async function openFile() {
-  const openRaw = (raw: string, name: string) => {
-    const format = getFormatFromPath(name);
-    let content: string;
-    let mode: EditorMode = "rich";
-    let isCorrupted = false;
-    if (format === "ldp") {
-      const parsed = deserializeLdp(raw);
-      if (parsed) {
-        content = parsed.content;
-        mode = (parsed.mode as EditorMode) ?? "rich";
-      } else {
-        content = `<p style="color:hsl(var(--danger));font-weight:500">This document is corrupted or not a valid LinkDit Pad document.</p>`;
-        isCorrupted = true;
-      }
-    } else if (format === "txt") {
-      content = raw;
-      mode = "plain";
-    } else if (format === "md") {
-      content = raw;
-      mode = "markdown";
-    } else {
-      content = raw;
-    }
-    const { openTab, renameTab, markSaved } = useEditorStore.getState();
-    const tabId = openTab({ content, mode });
-    const fileName = name.split("\\").pop()?.split("/").pop() ?? "Untitled";
-    renameTab(tabId, fileName.replace(/\.\w+$/, ""));
-    if (!isCorrupted) {
-      markSaved(tabId, name);
-    }
-  };
+async function openFileRaw(raw: string, name: string) {
+  const format = getFormatFromPath(name);
+  const loader = getLoader(format);
+  let content: string;
+  let mode: EditorMode;
+  let isCorrupted = false;
 
+  if (loader) {
+    const result = loader(raw);
+    if (result) {
+      content = result.content;
+      mode = result.mode;
+    } else {
+      content = `<p style="color:hsl(var(--danger));font-weight:500">This document is corrupted or not a valid LinkDit Pad document.</p>`;
+      mode = "rich";
+      isCorrupted = true;
+    }
+  } else {
+    content = raw;
+    mode = "rich";
+  }
+
+  const { openTab, renameTab, markSaved } = useEditorStore.getState();
+  const tabId = openTab({ content, mode });
+  const fileName = name.split("\\").pop()?.split("/").pop() ?? "Untitled";
+  renameTab(tabId, fileName.replace(/\.\w+$/, ""));
+  if (!isCorrupted) {
+    markSaved(tabId, name);
+    useToastStore.getState().show("success", `Opened ${fileName.replace(/\.\w+$/, "")}`);
+  } else {
+    useToastStore.getState().show("error", `File may be corrupted`);
+  }
+}
+
+export async function openFile() {
   try {
     const { open: showOpen } = await import("@tauri-apps/plugin-dialog");
     const { readTextFile } = await import("@tauri-apps/plugin-fs");
     const file = await showOpen({ multiple: false, filters: getOpenFilters() });
     if (file) {
       const raw = await readTextFile(file as string);
-      openRaw(raw, file as string);
+      await openFileRaw(raw, file as string);
     }
   } catch {
     const input = document.createElement("input");
@@ -479,17 +515,29 @@ export async function openFile() {
       const file2 = (e.target as HTMLInputElement).files?.[0];
       if (file2) {
         const raw = await file2.text();
-        openRaw(raw, file2.name);
+        await openFileRaw(raw, file2.name);
       }
     };
     input.click();
   }
 }
 
+export async function openFileAtPath(filePath: string) {
+  try {
+    const { readTextFile } = await import("@tauri-apps/plugin-fs");
+    const raw = await readTextFile(filePath);
+    await openFileRaw(raw, filePath);
+  } catch {
+    useToastStore.getState().show("error", `Could not open file: ${filePath}`);
+  }
+}
+
 export async function saveFile() {
+  useEditorStore.getState().commitFocusedPaneToTab();
   const editor = useEditorBridge.getState().editor;
   const state = useEditorStore.getState();
-  const activeTab = state.tabs[state.groups[state.activeGroupId]?.activeTabId ?? ""];
+  const focusedTabId = getFocusedPaneTabId(state);
+  const activeTab = state.tabs[focusedTabId ?? ""];
   if (!editor || !activeTab) return;
   const content = activeTab.mode === "rich" ? editor.getHTML() : activeTab.content;
 
@@ -500,10 +548,12 @@ export async function saveFile() {
       const { writeTextFile } = await import("@tauri-apps/plugin-fs");
       await writeTextFile(activeTab.meta.filePath, output);
       state.markSaved(activeTab.meta.id, activeTab.meta.filePath);
+      useToastStore.getState().show("success", `Saved "${activeTab.meta.title}"`);
       return;
     } catch {
       downloadFile(output, activeTab.meta.title, format);
       state.markSaved(activeTab.meta.id, activeTab.meta.filePath);
+      useToastStore.getState().show("warning", `Saved as download`);
       return;
     }
   }
@@ -512,9 +562,11 @@ export async function saveFile() {
 }
 
 export async function saveFileAs() {
+  useEditorStore.getState().commitFocusedPaneToTab();
   const editor = useEditorBridge.getState().editor;
   const state = useEditorStore.getState();
-  const activeTab = state.tabs[state.groups[state.activeGroupId]?.activeTabId ?? ""];
+  const focusedTabId = getFocusedPaneTabId(state);
+  const activeTab = state.tabs[focusedTabId ?? ""];
   if (!editor || !activeTab) return;
   const content = activeTab.mode === "rich" ? editor.getHTML() : activeTab.content;
 
@@ -530,11 +582,25 @@ export async function saveFileAs() {
     const output = prepareContentForSave(content, activeTab.mode, activeTab.meta.title, format);
     await writeTextFile(filePath as string, output);
     state.markSaved(activeTab.meta.id, filePath as string);
+    const fileName = (filePath as string).split("\\").pop()?.split("/").pop() ?? activeTab.meta.title;
+    useToastStore.getState().show("success", `Saved as ${fileName}`);
   } catch {
     const format = getFormatFromPath(activeTab.meta.filePath ?? `${activeTab.meta.title}.ldp`);
     const output = prepareContentForSave(content, activeTab.mode, activeTab.meta.title, format);
     downloadFile(output, activeTab.meta.title, format);
     state.markSaved(activeTab.meta.id, activeTab.meta.filePath);
+    useToastStore.getState().show("warning", `Saved as download`);
+  }
+}
+
+export async function deleteFile(filePath: string, title: string) {
+  try {
+    const { remove } = await import("@tauri-apps/plugin-fs");
+    await remove(filePath);
+    useToastStore.getState().show("success", `Deleted "${title}"`);
+  } catch {
+    useToastStore.getState().show("error", `Could not delete "${title}"`);
+    throw new Error("Failed to delete file");
   }
 }
 
@@ -556,20 +622,212 @@ function MenuBar() {
   const togglePalette = useCommandPaletteStore((s) => s.toggle);
   const toggleSearch = useSearchStore((s) => s.setIsVisible);
   const activeGroupId = useEditorStore((s) => s.activeGroupId);
+  const recentFiles = useRecentFilesStore((s) => s.entries);
+
+  const splitMode = useEditorStore((s) => s.splitMode);
+  const activePane = useEditorStore((s) => s.activePane);
+  const secondaryTabId = useEditorStore((s) => s.secondaryTabId);
+  const groupActiveTabId = useEditorStore((s) => s.groups[s.activeGroupId]?.activeTabId);
+  const splitEditor = useEditorStore((s) => s.splitEditor);
+  const closeSplit = useEditorStore((s) => s.closeSplit);
+  const toggleOutline = useOutlineStore((s) => s.toggle);
+  const openVersionHistory = useVersionHistoryStore((s) => s.open);
+  const openBackup = useBackupStore((s) => s.open);
+  const openLockDialog = useLockStore((s) => s.openDialog);
+  const lockLocks = useLockStore((s) => s.locks);
+  const unlockedIds = useLockStore((s) => s.unlockedIds);
+
+  const focusedTabId =
+    splitMode !== "none" && activePane === "secondary" ? secondaryTabId : groupActiveTabId;
+  const focusedProtected = focusedTabId ? !!lockLocks[focusedTabId] : false;
+  const focusedIsLocked = focusedTabId
+    ? lockLocks[focusedTabId]
+      ? !unlockedIds.includes(focusedTabId)
+      : false
+    : false;
+
+  const handleSplitRight = useCallback(() => splitEditor("right"), [splitEditor]);
+  const handleSplitDown = useCallback(() => splitEditor("down"), [splitEditor]);
+  const handleCloseSplit = useCallback(() => closeSplit(), [closeSplit]);
+
+  const handleLockDocument = useCallback(() => {
+    const state = useEditorStore.getState();
+    const id = getFocusedPaneTabId(state);
+    if (!id) {
+      useToastStore.getState().show("warning", "No document open to lock.");
+      return;
+    }
+    const lockStore = useLockStore.getState();
+    if (lockStore.isProtected(id)) {
+      if (lockStore.isLocked(id)) {
+        useToastStore.getState().show("info", "This document is already locked.");
+        return;
+      }
+      lockStore.rejectLock(id);
+      useToastStore.getState().show("success", "Document locked again.");
+      return;
+    }
+    openLockDialog("lock");
+  }, [openLockDialog]);
+
+  const handleUnlockDocument = useCallback(() => {
+    const state = useEditorStore.getState();
+    const id = getFocusedPaneTabId(state);
+    if (!id) {
+      useToastStore.getState().show("warning", "No document open to unlock.");
+      return;
+    }
+    const lockStore = useLockStore.getState();
+    if (!lockStore.isProtected(id)) {
+      useToastStore.getState().show("info", "This document is not password protected.");
+      return;
+    }
+    if (!lockStore.isLocked(id)) {
+      useToastStore.getState().show("info", "This document is already unlocked.");
+      return;
+    }
+    openLockDialog("unlock");
+  }, [openLockDialog]);
 
   const handleNew = useCallback(() => openTab(), [openTab]);
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
     const state = useEditorStore.getState();
     const group = state.groups[activeGroupId];
     if (group?.activeTabId) {
       const tab = state.tabs[group.activeTabId];
-      if (tab?.meta.isDirty && !window.confirm(`"${tab.meta.title}" has unsaved changes. Close anyway?`)) return;
+      if (tab?.meta.isDirty) {
+        const action = await useConfirmStore.getState().show(
+          `"${tab.meta.title}" has unsaved changes. Save before closing?`
+        );
+        if (action === "cancel") return;
+        if (action === "save") {
+          await saveFile();
+        }
+      }
       closeTab(group.activeTabId);
     }
   }, [activeGroupId, closeTab]);
 
   const handleExportPdf = useCallback(() => {
     window.print();
+  }, []);
+
+  const handlePrint = useCallback(() => {
+    const state = useEditorStore.getState();
+    const group = state.groups[activeGroupId];
+    const activeTabId = group?.activeTabId;
+    if (!activeTabId) return;
+    const tab = state.tabs[activeTabId];
+    if (!tab) return;
+
+    const editor = useEditorBridge.getState().editor;
+    let content = tab.content;
+    if (editor && tab.mode === "rich") {
+      content = editor.getHTML();
+    }
+
+    const printWindow = window.open("", "_blank", "width=800,height=600");
+    if (!printWindow) return;
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${tab.meta.title}</title>
+          <style>
+            body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+            @media print { body { padding: 0; } }
+            h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; }
+            p { margin: 0.5em 0; }
+            pre { background: #f5f5f5; padding: 1rem; overflow: auto; }
+            code { background: #f5f5f5; padding: 0.2em 0.4em; border-radius: 3px; }
+            blockquote { border-left: 4px solid #ddd; padding-left: 1rem; color: #666; margin: 1em 0; }
+            table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+            th, td { border: 1px solid #ddd; padding: 0.5rem; }
+            img { max-width: 100%; height: auto; }
+          </style>
+        </head>
+        <body>
+          ${content}
+        </body>
+      </html>
+    `;
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  }, [activeGroupId]);
+
+  const handleOpenRecent = useCallback((entry: { id: string; path: string | null; title: string }) => {
+    if (entry.path) {
+      openFileAtPath(entry.path);
+    } else {
+      const state = useEditorStore.getState();
+      const tab = state.tabs[entry.id];
+      if (tab) {
+        useEditorStore.getState().setActiveTab(activeGroupId, entry.id);
+      } else {
+        openTab();
+      }
+    }
+  }, [activeGroupId, openTab]);
+
+  const handleProperties = useCallback(() => {
+    // DocumentPropertiesDialog manages its own state
+  }, []);
+
+  const handleImport = useCallback(async (format: "md" | "txt") => {
+    try {
+      const { open: showOpen } = await import("@tauri-apps/plugin-dialog");
+      const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      const file = await showOpen({
+        multiple: false,
+        filters: [{ name: format === "md" ? "Markdown (*.md)" : "Plain Text (*.txt)", extensions: [format] }]
+      });
+      if (file) {
+        const raw = await readTextFile(file as string);
+        const loader = getLoader(format);
+        let content = raw;
+        let mode: EditorMode = "rich";
+        if (loader) {
+          const result = loader(raw);
+          if (result) {
+            content = result.content;
+            mode = result.mode;
+          }
+        }
+        const { openTab, renameTab } = useEditorStore.getState();
+        const tabId = openTab({ content, mode });
+        const fileName = (file as string).split("\\").pop()?.split("/").pop() ?? "Untitled";
+        renameTab(tabId, fileName.replace(/\.\w+$/, ""));
+        useToastStore.getState().show("success", `Imported ${fileName.replace(/\.\w+$/, "")}`);
+      }
+    } catch {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = format === "md" ? ".md" : ".txt";
+      input.onchange = async (e) => {
+        const file2 = (e.target as HTMLInputElement).files?.[0];
+        if (file2) {
+          const raw = await file2.text();
+          const loader = getLoader(format);
+          let content = raw;
+          let mode: EditorMode = "rich";
+          if (loader) {
+            const result = loader(raw);
+            if (result) {
+              content = result.content;
+              mode = result.mode;
+            }
+          }
+          const { openTab, renameTab } = useEditorStore.getState();
+          const tabId = openTab({ content, mode });
+          renameTab(tabId, file2.name.replace(/\.\w+$/, ""));
+          useToastStore.getState().show("success", `Imported ${file2.name.replace(/\.\w+$/, "")}`);
+        }
+      };
+      input.click();
+    }
   }, []);
 
   const menus = [
@@ -582,11 +840,34 @@ function MenuBar() {
         { label: "Save As...", shortcut: "Ctrl+Shift+S", action: saveFileAs },
         { separator: true },
         {
+          label: "Import",
+          children: [
+            { label: "Markdown (.md)", icon: FileText, action: () => handleImport("md") },
+            { label: "Plain Text (.txt)", icon: FileText, action: () => handleImport("txt") },
+          ],
+        },
+        { separator: true },
+        {
           label: "Export",
           children: [
             { label: "Export PDF", action: handleExportPdf },
           ],
         },
+        { separator: true },
+        { label: "Print", shortcut: "Ctrl+P", icon: Printer, action: handlePrint },
+        { separator: true },
+        {
+          label: "Recent Files",
+          children: recentFiles.length === 0
+            ? [{ label: "No Recent Files", disabled: true }]
+            : recentFiles.slice(0, 10).map((entry) => ({
+                label: entry.title,
+                icon: FileText,
+                action: () => handleOpenRecent(entry),
+              })),
+        },
+        { separator: true },
+        { label: "Document Properties", shortcut: "Ctrl+Shift+I", icon: FileText, action: handleProperties },
         { separator: true },
         { label: "Close Tab", shortcut: "Ctrl+W", action: handleClose },
         { label: "Exit", action: () => window.close() },
@@ -624,6 +905,29 @@ function MenuBar() {
         { label: "Command Palette", shortcut: "Ctrl+Shift+P", action: togglePalette },
         { separator: true },
         { label: "Toggle Sidebar", shortcut: "Ctrl+B", action: () => useEditorStore.getState().toggleSidebar() },
+        { separator: true },
+        {
+          label: "Split Right",
+          icon: SquareSplitVertical,
+          action: handleSplitRight,
+        },
+        {
+          label: "Split Down",
+          icon: SquareSplitHorizontal,
+          action: handleSplitDown,
+        },
+        {
+          label: "Close Split",
+          icon: SquareSplitHorizontal,
+          disabled: splitMode === "none",
+          action: handleCloseSplit,
+        },
+        { separator: true },
+        {
+          label: "Document Outline",
+          icon: ListTree,
+          action: toggleOutline,
+        },
       ],
     },
     {
@@ -675,6 +979,9 @@ function MenuBar() {
         { label: "Search", shortcut: "Ctrl+F", icon: Search, action: () => toggleSearch(true) },
         { label: "Replace", shortcut: "Ctrl+H", icon: Replace, action: () => toggleSearch(true) },
         { separator: true },
+        { label: "Version History", icon: History, action: () => openVersionHistory() },
+        { label: "Backup / Recovery", icon: DatabaseBackup, action: () => openBackup() },
+        { separator: true },
         { label: "Word Count", action: () => {
           const editor = useEditorBridge.getState().editor;
           if (editor) {
@@ -684,6 +991,23 @@ function MenuBar() {
             alert(`Words: ${words}\nCharacters: ${chars}`);
           }
         }},
+      ],
+    },
+    {
+      label: "Document",
+      items: [
+        {
+          label: focusedIsLocked ? "Locked - Read Only" : "Lock Document",
+          icon: LockKeyhole,
+          disabled: focusedIsLocked || !focusedTabId,
+          action: handleLockDocument,
+        },
+        {
+          label: "Unlock Document",
+          icon: LockKeyholeOpen,
+          disabled: !focusedProtected || !focusedIsLocked || !focusedTabId,
+          action: handleUnlockDocument,
+        },
       ],
     },
   ];
@@ -707,9 +1031,17 @@ function MenuBar() {
                     <DropdownMenuSubContent>
                       {item.children.map((child, cidx) => {
                         if ("separator" in child && child.separator) return <DropdownMenuSeparator key={cidx} />;
+                        const childItem = child as { label: string; disabled?: boolean; action?: () => void; icon?: React.ElementType };
+                        if (childItem.disabled) {
+                          return (
+                            <DropdownMenuItem key={childItem.label} disabled className="text-muted-foreground">
+                              {childItem.label}
+                            </DropdownMenuItem>
+                          );
+                        }
                         return (
-                          <DropdownMenuItem key={child.label} onClick={child.action}>
-                            {child.label}
+                          <DropdownMenuItem key={childItem.label} onClick={childItem.action}>
+                            {childItem.label}
                           </DropdownMenuItem>
                         );
                       })}
@@ -717,9 +1049,9 @@ function MenuBar() {
                   </DropdownMenuSub>
                 );
               }
-              const i = item as { label: string; shortcut?: string; icon?: React.ElementType; action: () => void };
+              const i = item as { label: string; shortcut?: string; icon?: React.ElementType; action: () => void; disabled?: boolean };
               return (
-                <DropdownMenuItem key={i.label} onClick={i.action}>
+                <DropdownMenuItem key={i.label} onClick={i.action} disabled={i.disabled}>
                   {i.icon ? <i.icon size={14} className="mr-1" /> : null}
                   {i.label}
                   {i.shortcut ? <DropdownMenuShortcut>{i.shortcut}</DropdownMenuShortcut> : null}
@@ -730,6 +1062,97 @@ function MenuBar() {
         </DropdownMenu>
       ))}
     </div>
+  );
+}
+
+function DocumentPropertiesDialog() {
+  const { tabs, groups, activeGroupId } = useEditorStore();
+  const group = groups[activeGroupId];
+  const activeTabId = group?.activeTabId;
+  const tab = activeTabId ? tabs[activeTabId] : null;
+  const editor = useEditorBridge.getState().editor;
+  const [showProperties, setShowProperties] = useState(false);
+  const [fileSize, setFileSize] = useState("Loading...");
+
+  const getContentStats = () => {
+    if (!tab) return { words: 0, chars: 0, lines: 0 };
+    let content = tab.content;
+    if (editor && tab.mode === "rich") {
+      content = editor.getHTML();
+    }
+    const plainText = htmlToPlainText(content);
+    const words = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
+    const chars = plainText.length;
+    const lines = plainText.split("\n").length;
+    return { words, chars, lines };
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileSize = async (): Promise<string> => {
+    if (!tab?.meta.filePath) return "Unavailable (unsaved document)";
+    try {
+      const { stat } = await import("@tauri-apps/plugin-fs");
+      const statResult = await stat(tab.meta.filePath);
+      return formatFileSize(statResult.size);
+    } catch {
+      return "Unavailable";
+    }
+  };
+
+  useEffect(() => {
+    if (tab) {
+      getFileSize().then(setFileSize);
+    }
+  }, [tab?.meta.filePath]);
+
+  if (!tab) return null;
+
+  const stats = getContentStats();
+  const format = tab.meta.filePath ? tab.meta.filePath.split(".").pop()?.toUpperCase() : "Unsaved";
+
+  return (
+    <Dialog open={showProperties} onOpenChange={(open) => !open && setShowProperties(false)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Document Properties</DialogTitle>
+          <DialogDescription>
+            Information about the current document
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <span className="text-muted-foreground">Title</span>
+            <span className="font-medium truncate">{tab.meta.title}</span>
+            <span className="text-muted-foreground">File Path</span>
+            <span className="font-medium truncate">{tab.meta.filePath || "Unsaved"}</span>
+            <span className="text-muted-foreground">File Type</span>
+            <span className="font-medium">{format}</span>
+            <span className="text-muted-foreground">File Size</span>
+            <span className="font-medium">{fileSize}</span>
+            <span className="text-muted-foreground">Words</span>
+            <span className="font-medium">{stats.words}</span>
+            <span className="text-muted-foreground">Characters</span>
+            <span className="font-medium">{stats.chars}</span>
+            <span className="text-muted-foreground">Lines</span>
+            <span className="font-medium">{stats.lines}</span>
+            <span className="text-muted-foreground">Created</span>
+            <span className="font-medium">{new Date(tab.meta.createdAt).toLocaleString()}</span>
+            <span className="text-muted-foreground">Modified</span>
+            <span className="font-medium">{new Date(tab.meta.updatedAt).toLocaleString()}</span>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setShowProperties(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -796,6 +1219,8 @@ function ToolbarActions() {
       <Separator orientation="vertical" className="mx-1 h-5" />
       <ToolbarButton icon={Search} label="Search" shortcut="Ctrl+F" onClick={() => toggleSearch(true)} />
       <ToolbarButton icon={Replace} label="Replace" shortcut="Ctrl+H" onClick={() => toggleSearch(true)} />
+      <Separator orientation="vertical" className="mx-1 h-5" />
+      <ToolbarButton icon={BookmarkPlus} label="Add Bookmark" shortcut="Ctrl+Shift+K" onClick={addBookmarkAtCursor} />
       <div className="ml-auto flex items-center gap-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -830,6 +1255,7 @@ export function Toolbar() {
       <div className="border-t border-border/50">
         <ToolbarActions />
       </div>
+      <DocumentPropertiesDialog />
     </motion.div>
   );
 }

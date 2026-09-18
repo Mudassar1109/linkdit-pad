@@ -11,6 +11,9 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Separator } from "@/components/ui/separator";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { RecentDocuments } from "@/components/documents/RecentDocuments";
+import { BookmarksPanel } from "@/components/bookmarks/BookmarksPanel";
+import { SearchPanel } from "@/components/search/SearchPanel";
+import { TrashPanel } from "@/components/trash/TrashPanel";
 
 interface SidebarNavItem {
   id: string;
@@ -61,7 +64,13 @@ export function Sidebar() {
       case "recent":
       case "pinned":
       case "history":
-        return <RecentDocuments />;
+        return <RecentDocuments view={activeView as "recent" | "pinned" | "history"} />;
+      case "bookmarks":
+        return <BookmarksPanel />;
+      case "search":
+        return <SearchPanel />;
+      case "trash":
+        return <TrashPanel />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">

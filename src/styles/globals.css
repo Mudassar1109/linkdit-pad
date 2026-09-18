@@ -116,6 +116,61 @@ body {
 
 .ProseMirror {
   caret-color: hsl(var(--foreground));
+  flex: 1;
+  min-height: 0;
+}
+
+.ProseMirror-focused {
+  outline: none;
+}
+
+/* Flex chain to make the editable area fill its container */
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-container > div {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Ensure empty paragraphs are clickable */
+.ProseMirror p {
+  min-height: 1.2em;
+}
+
+.ProseMirror p:empty::before {
+  content: "\200B";
+  display: inline;
+}
+
+/* Keep a clickable paragraph after every table */
+.ProseMirror table {
+  margin-bottom: 0;
+}
+
+.ProseMirror table + * {
+  margin-top: 0.5em;
+}
+
+/* Table cursor escape */
+.ProseMirror .tableWrapper {
+  margin-bottom: 0.25em;
+}
+
+.ProseMirror .ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: relative;
+}
+
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
 }
 
 .ProseMirror-focused {

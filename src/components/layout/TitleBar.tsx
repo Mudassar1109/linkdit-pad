@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Minus, Square, X, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/store/useEditorStore";
+import { useConfirmStore } from "@/store/useConfirmStore";
+import { saveFile } from "./Toolbar";
+import { markCleanExit } from "@/lib/sessionStore";
 import type { Window as TauriWindow } from "@tauri-apps/api/window";
 
 /**
@@ -34,16 +37,25 @@ export function TitleBar() {
     };
   }, []);
 
-  const handleClose = () => {
-    const { tabs } = useEditorStore.getState();
-    const hasDirty = Object.values(tabs).some((t) => t.meta.isDirty);
-    if (hasDirty && !window.confirm("You have unsaved changes. Close anyway?")) return;
+  const handleClose = useCallback(async () => {
+    const store = useEditorStore.getState();
+    const hasDirty = Object.values(store.tabs).some((t) => t.meta.isDirty);
+    if (hasDirty) {
+      const action = await useConfirmStore.getState().show(
+        "You have unsaved changes. Save before closing?"
+      );
+      if (action === "cancel") return;
+      if (action === "save") {
+        await saveFile();
+      }
+    }
+    markCleanExit();
     if (appWindow) {
       appWindow.close();
     } else {
       window.close();
     }
-  };
+  }, [appWindow]);
 
   return (
     <header

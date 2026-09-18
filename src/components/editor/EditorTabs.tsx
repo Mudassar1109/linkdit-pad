@@ -1,17 +1,24 @@
 import { useCallback, useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Plus, FileText, ChevronLeft, ChevronRight, Trash2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useEditorStore } from "@/store/useEditorStore";
+import { useLockStore } from "@/store/useLockStore";
+import { useConfirmStore } from "@/store/useConfirmStore";
+import { saveFile } from "@/components/layout/Toolbar";
+import { moveTabToTrash } from "@/lib/trash";
 import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuSeparator
 } from "@/components/ui/context-menu";
 
 export function EditorTabs() {
-  const { tabs, groups, activeGroupId, setActiveTab, closeTab, openTab } = useEditorStore();
+  const { tabs, groups, activeGroupId, setActiveTab, closeTab, openTab, renameTab } = useEditorStore();
   const group = groups[activeGroupId];
+  const lockLocks = useLockStore((s) => s.locks);
+  const unlockedIds = useLockStore((s) => s.unlockedIds);
+  const isTabLocked = useCallback((tabId: string) => !!lockLocks[tabId] && !unlockedIds.includes(tabId), [lockLocks, unlockedIds]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -42,10 +49,18 @@ export function EditorTabs() {
     el.scrollBy({ left: dir * 150, behavior: "smooth" });
   }, []);
 
-  const handleClose = useCallback((e: React.MouseEvent, tabId: string) => {
+  const handleClose = useCallback(async (e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
     const tab = tabs[tabId];
-    if (tab?.meta.isDirty && !window.confirm(`"${tab.meta.title}" has unsaved changes. Close anyway?`)) return;
+    if (tab?.meta.isDirty) {
+      const action = await useConfirmStore.getState().show(
+        `"${tab.meta.title}" has unsaved changes. Save before closing?`
+      );
+      if (action === "cancel") return;
+      if (action === "save") {
+        await saveFile();
+      }
+    }
     closeTab(tabId);
   }, [closeTab, tabs]);
 
@@ -54,21 +69,103 @@ export function EditorTabs() {
     if (tab) openTab({ content: tab.content, mode: tab.mode });
   }, [tabs, openTab]);
 
-  const handleCloseOthers = useCallback((tabId: string) => {
+  const handleCloseOthers = useCallback(async (tabId: string) => {
     const tabIds = group?.tabIds || [];
     const hasDirty = tabIds.some((id) => id !== tabId && tabs[id]?.meta.isDirty);
-    if (hasDirty && !window.confirm("Close other tabs with unsaved changes?")) return;
+    if (hasDirty) {
+      const action = await useConfirmStore.getState().show(
+        "Close other tabs with unsaved changes?"
+      );
+      if (action !== "discard") return;
+    }
     for (const id of tabIds) {
       if (id !== tabId) closeTab(id);
     }
   }, [group?.tabIds, closeTab, tabs]);
 
-  const handleCloseAll = useCallback(() => {
+  const handleCloseAll = useCallback(async () => {
     const tabIds = group?.tabIds || [];
     const hasDirty = tabIds.some((id) => tabs[id]?.meta.isDirty);
-    if (hasDirty && !window.confirm("Close all tabs with unsaved changes?")) return;
+    if (hasDirty) {
+      const action = await useConfirmStore.getState().show(
+        "Close all tabs with unsaved changes?"
+      );
+      if (action !== "discard") return;
+    }
     for (const id of [...tabIds]) closeTab(id);
   }, [group?.tabIds, closeTab, tabs]);
+
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const cancelRenameRef = useRef(false);
+
+  const startRename = useCallback((tabId: string) => {
+    const tab = tabs[tabId];
+    if (!tab) return;
+    setRenamingId(tabId);
+    setRenameValue(tab.meta.title);
+    cancelRenameRef.current = false;
+    requestAnimationFrame(() => {
+      const el = renameInputRef.current;
+      if (el) {
+        el.focus();
+        el.select();
+      }
+    });
+  }, [tabs]);
+
+  const commitRename = useCallback((tabId: string) => {
+    if (cancelRenameRef.current) {
+      cancelRenameRef.current = false;
+      setRenamingId(null);
+      return;
+    }
+    const tab = tabs[tabId];
+    const val = renameValue.trim();
+    if (tab && val && val !== tab.meta.title) {
+      renameTab(tabId, val);
+    }
+    setRenamingId(null);
+  }, [renameValue, renameTab, tabs]);
+
+  const cancelRename = useCallback(() => {
+    cancelRenameRef.current = true;
+    setRenamingId(null);
+  }, []);
+
+  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent, tabId: string) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitRename(tabId);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelRename();
+    }
+  }, [commitRename, cancelRename]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "F2") return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (renamingId) return;
+      const state = useEditorStore.getState();
+      const activeTabId = state.groups[state.activeGroupId]?.activeTabId;
+      if (activeTabId && state.tabs[activeTabId]) {
+        e.preventDefault();
+        startRename(activeTabId);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [renamingId, startRename]);
+
+  const activeTitle = group?.activeTabId && tabs[group.activeTabId] ? tabs[group.activeTabId].meta.title : null;
+  useEffect(() => {
+    if (activeTitle) document.title = `${activeTitle} — LinkDit Pad`;
+  }, [activeTitle]);
 
   if (!group) return null;
 
@@ -104,6 +201,7 @@ export function EditorTabs() {
                     exit={{ opacity: 0, width: 0 }}
                     transition={{ duration: 0.15 }}
                     onClick={() => setActiveTab(activeGroupId, tabId)}
+                    onDoubleClick={(e) => { e.stopPropagation(); startRename(tabId); }}
                     className={cn(
                       "group flex h-full shrink-0 cursor-pointer items-center gap-1.5 border-r border-border px-3 text-sm select-none",
                       "transition-colors duration-75",
@@ -114,7 +212,24 @@ export function EditorTabs() {
                     style={{ minWidth: 100, maxWidth: 180 }}
                   >
                     <FileText size={13} className="shrink-0 text-muted-foreground/60" />
-                    <span className="truncate max-w-[100px]">{tab.meta.title}</span>
+                    {renamingId === tabId ? (
+                      <input
+                        ref={renameInputRef}
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => commitRename(tabId)}
+                        onKeyDown={(e) => handleRenameKeyDown(e, tabId)}
+                        onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        autoFocus
+                        className="w-[120px] shrink-0 rounded border border-border bg-background px-1 py-0.5 text-xs text-foreground outline-none"
+                      />
+                    ) : (
+                      <span className="truncate max-w-[100px]">{tab.meta.title}</span>
+                    )}
+                    {isTabLocked(tabId) && (
+                      <Lock size={10} className="shrink-0 text-muted-foreground/70" aria-label="Document is locked" />
+                    )}
                     {tab.meta.isDirty && (
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                     )}
@@ -135,6 +250,11 @@ export function EditorTabs() {
                   <ContextMenuItem onClick={() => handleCloseOthers(tabId)}>Close Others</ContextMenuItem>
                   <ContextMenuItem onClick={handleCloseAll}>Close All</ContextMenuItem>
                   <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => { const tab = tabs[tabId]; if (tab) moveTabToTrash(tab); }}>
+                    <Trash2 size={14} /> Move to Trash
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => startRename(tabId)}>Rename</ContextMenuItem>
                   <ContextMenuItem onClick={() => handleDuplicate(tabId)}>Duplicate</ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>

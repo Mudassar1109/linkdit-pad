@@ -1,3 +1,6 @@
+import { htmlToMarkdown } from "@/lib/htmlToMd";
+import { htmlToRtf } from "@/lib/htmlToRtf";
+
 export type DocumentFormat = "ldp" | "html" | "txt" | "md" | "rtf";
 
 export const LDP_FORMAT_VERSION = 1;
@@ -43,7 +46,7 @@ export function createLdpMeta(title: string, mode: string): LdpMeta {
     updatedAt: now,
     creator: {
       app: "LinkDit Pad",
-      version: "0.1.0",
+      version: "0.1.1",
     },
     language: "en",
     direction: "ltr",
@@ -116,7 +119,7 @@ export function serializeLdp(content: string, mode: string, title: string): stri
     },
   };
 
-  return JSON.stringify(doc);
+  return JSON.stringify(doc, null, 2);
 }
 
 export interface LdpParseResult {
@@ -135,50 +138,29 @@ export function deserializeLdp(data: string): LdpParseResult | null {
 
     if (!parsed || typeof parsed !== "object") return null;
 
-    if (
-      parsed.ldp === "linkdit-pad" &&
-      typeof parsed.version === "number" &&
-      parsed.content &&
-      typeof parsed.content === "object" &&
-      typeof parsed.content.data === "string"
-    ) {
-      return parseStructuredLdp(parsed);
+    if (parsed.ldp !== "linkdit-pad") return null;
+    if (typeof parsed.version !== "number") return null;
+    if (!parsed.content || typeof parsed.content !== "object") return null;
+    if (typeof parsed.content.data !== "string") return null;
+
+    const content = parsed.content.data.trim();
+    if (!content) return null;
+
+    if (parsed.version > LDP_FORMAT_VERSION) {
+      console.warn(
+        `[LinkDit Pad] File uses format v${parsed.version}, but this app supports up to v${LDP_FORMAT_VERSION}. ` +
+        "Some features may not be available."
+      );
     }
 
-    if (parsed.format === "linkdit-pad") {
-      return parseLegacyLdp(parsed);
-    }
+    const meta = parsed.meta as Record<string, unknown> | undefined;
+    const mode = typeof meta?.mode === "string" ? meta.mode : "rich";
+    const title = typeof meta?.title === "string" ? meta.title : "Untitled";
 
-    return null;
+    return { content, mode, title, version: parsed.version };
   } catch {
     return null;
   }
-}
-
-function parseStructuredLdp(parsed: Record<string, unknown>): LdpParseResult | null {
-  const version = typeof parsed.version === "number" ? parsed.version : 0;
-
-  if (version > LDP_FORMAT_VERSION) {
-    console.warn(
-      `[LinkDit Pad] File uses format v${version}, but this app supports up to v${LDP_FORMAT_VERSION}. ` +
-      "Some features may not be available."
-    );
-  }
-
-  const contentBlock = parsed.content as Record<string, unknown>;
-  const meta = parsed.meta as Record<string, unknown> | undefined;
-  const content = contentBlock.data as string;
-  const mode = typeof meta?.mode === "string" ? meta.mode : "rich";
-  const title = typeof meta?.title === "string" ? meta.title : "Untitled";
-
-  return { content, mode, title, version };
-}
-
-function parseLegacyLdp(parsed: Record<string, unknown>): LdpParseResult | null {
-  const content = typeof parsed.content === "string" ? parsed.content : "";
-  const mode = typeof parsed.mode === "string" ? parsed.mode : "rich";
-  const title = typeof parsed.title === "string" ? parsed.title : "Untitled";
-  return { content, mode, title, version: 0 };
 }
 
 export function stripHtml(text: string): string {
@@ -194,6 +176,10 @@ export function prepareContentForSave(
   switch (format) {
     case "ldp":
       return serializeLdp(content, mode, title);
+    case "md":
+      return htmlToMarkdown(content);
+    case "rtf":
+      return htmlToRtf(content);
     case "txt":
       return stripHtml(content);
     default:
