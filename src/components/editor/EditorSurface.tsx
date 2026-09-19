@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { FileEdit, Lock, Unlock } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FileEdit, Lock, Unlock, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActiveTab, useEditorStore } from "@/store/useEditorStore";
 import { useLockStore } from "@/store/useLockStore";
@@ -48,6 +48,16 @@ function EditorPaneView({
     [pane, tab.meta.id]
   );
 
+  const [hintDismissed, setHintDismissed] = useState(false);
+
+  useEffect(() => {
+    setHintDismissed(false);
+  }, [tab.meta.id]);
+
+  const paneIsEmpty =
+    paneContent.replace(/^<p>\s*<\/p>$/, "").trim() === "" ||
+    paneContent.trim() === "";
+
   // When both panes display the same document, snapshot the current tab
   // content into THIS pane's private buffer so the panes diverge independently
   // instead of sharing (and mirroring) one editor state.
@@ -69,18 +79,19 @@ function EditorPaneView({
   return (
     <div
       className="relative flex h-full min-h-0 min-w-0 flex-col"
-      onMouseDown={() => onSetPane(pane)}
+      onMouseDown={() => { onSetPane(pane); setHintDismissed(true); }}
       data-pane={pane}
       role="group"
       aria-label={`${pane === "primary" ? "Primary" : "Secondary"} pane - ${tab.meta.title}`}
     >
-      <div className="flex h-8 shrink-0 items-center gap-1 border-b border-border bg-card/40 px-2">
+      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border/70 bg-card/40 px-3">
+        <FolderOpen size={12} className="shrink-0 text-muted-foreground/70" />
         <select
           value={tab.meta.id}
           onChange={(e) => onSwitchTab(e.target.value)}
           aria-label={`${pane === "primary" ? "Primary" : "Secondary"} pane document`}
           title="Switch document in this pane"
-          className="h-6 min-w-0 flex-1 truncate rounded border border-input bg-background px-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-6 min-w-0 flex-1 truncate rounded-md border border-transparent bg-muted/50 px-2 text-xs font-medium text-foreground transition-colors duration-150 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-ring hover:bg-muted/70"
         >
           {tabsList.map((t) => (
             <option key={t.id} value={t.id}>
@@ -105,8 +116,10 @@ function EditorPaneView({
             <TooltipTrigger asChild>
               <span
                 className={cn(
-                  "flex h-5 w-5 items-center justify-center rounded text-muted-foreground/60",
-                  activePane === pane ? "text-primary" : "text-muted-foreground/40"
+                  "flex h-5 w-5 items-center justify-center rounded-full transition-all duration-150",
+                  activePane === pane
+                    ? "bg-primary/15 text-primary shadow-glow-sm"
+                    : "text-muted-foreground/40"
                 )}
                 aria-label={activePane === pane ? "Pane is active" : "Pane is inactive"}
               >
@@ -120,7 +133,7 @@ function EditorPaneView({
         )}
       </div>
 
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0 editor-canvas">
         {isRich ? (
           <RichTextEditor
             content={paneContent}
@@ -139,6 +152,26 @@ function EditorPaneView({
             fileId={tab.meta.id}
             editable={!locked}
           />
+        )}
+        {paneIsEmpty && !hintDismissed && !locked && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            <div className="relative flex flex-col items-center">
+              <div
+                className="absolute -inset-16 -z-10 rounded-full opacity-40 blur-3xl"
+                style={{
+                  background:
+                    "radial-gradient(circle, hsl(var(--primary) / 0.18), transparent 65%), radial-gradient(circle, hsl(var(--accent2) / 0.14), transparent 70%)",
+                }}
+                aria-hidden
+              />
+              <h2 className="text-3xl font-semibold tracking-tight text-foreground/90">
+                Untitled
+              </h2>
+              <p className="mt-2 text-sm font-medium text-muted-foreground">
+                Start writing your notes...
+              </p>
+            </div>
+          </div>
         )}
         {locked && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center bg-background/30 pt-10">
@@ -213,8 +246,18 @@ export function EditorSurface() {
 
   if (!activeTab) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
-        <FileEdit size={40} strokeWidth={1.5} />
+      <div className="editor-canvas flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+        <div className="relative flex flex-col items-center">
+          <div
+            className="absolute -inset-16 -z-10 rounded-full opacity-40 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle, hsl(var(--primary) / 0.18), transparent 65%), radial-gradient(circle, hsl(var(--accent2) / 0.14), transparent 70%)",
+            }}
+            aria-hidden
+          />
+          <FileEdit size={40} strokeWidth={1.5} className="text-primary/70" />
+        </div>
         <p className="text-sm">No document open</p>
         <Button size="sm" onClick={() => openTab()}>
           New document
@@ -266,7 +309,7 @@ export function EditorSurface() {
         title="Drag to resize panes"
         onMouseDown={(e) => startDrag(e, isVertical ? "right" : "down")}
         className={cn(
-          "z-10 shrink-0 bg-border transition-colors hover:bg-primary/50",
+          "z-10 shrink-0 bg-border/70 transition-colors duration-150 hover:bg-primary/60 active:bg-primary/80",
           isVertical ? "h-full w-1 cursor-col-resize" : "h-1 w-full cursor-row-resize"
         )}
       />

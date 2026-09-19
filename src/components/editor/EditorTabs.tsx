@@ -172,18 +172,18 @@ export function EditorTabs() {
   const tabIds = group.tabIds;
 
   return (
-    <div className="relative flex h-9 items-center border-b border-border bg-card/40 shrink-0">
+    <div className="relative flex h-10 shrink-0 items-end gap-1 border-b border-border/80 bg-card/40 px-2 pt-1.5">
       {canScrollLeft && (
         <button
           onClick={() => scrollBy(-1)}
-          className="absolute left-0 z-10 h-full w-6 flex items-center justify-center bg-gradient-to-r from-card/90 to-transparent text-muted-foreground hover:text-foreground"
+          className="absolute bottom-0 left-0 z-10 h-[34px] w-6 flex items-center justify-center bg-gradient-to-r from-card/90 to-transparent text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft size={14} />
         </button>
       )}
       <div
         ref={scrollRef}
-        className="flex h-full flex-1 items-center overflow-x-auto scrollbar-none"
+        className="flex h-full flex-1 items-end gap-1 overflow-x-auto scrollbar-none"
       >
         <AnimatePresence initial={false}>
           {tabIds.map((tabId) => {
@@ -203,15 +203,27 @@ export function EditorTabs() {
                     onClick={() => setActiveTab(activeGroupId, tabId)}
                     onDoubleClick={(e) => { e.stopPropagation(); startRename(tabId); }}
                     className={cn(
-                      "group flex h-full shrink-0 cursor-pointer items-center gap-1.5 border-r border-border px-3 text-sm select-none",
-                      "transition-colors duration-75",
+                      "group relative flex h-[34px] shrink-0 cursor-pointer items-center gap-1.5 rounded-t-lg px-2.5 text-sm select-none",
+                      "transition-all duration-150 border border-b-0",
                       isActive
-                        ? "bg-background text-foreground border-b-2 border-b-primary"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        ? "border-border bg-background text-foreground shadow-inset-card"
+                        : "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                     )}
-                    style={{ minWidth: 100, maxWidth: 180 }}
+                    style={{ minWidth: 108, maxWidth: 190 }}
                   >
-                    <FileText size={13} className="shrink-0 text-muted-foreground/60" />
+                    {isActive && (
+                      <span
+                        className="absolute inset-x-0 top-0 h-[2px] rounded-t-lg bg-gradient-to-r from-primary via-accent to-accent2 shadow-glow-sm"
+                        aria-hidden
+                      />
+                    )}
+                    <FileText
+                      size={13}
+                      className={cn(
+                        "shrink-0 transition-colors",
+                        isActive ? "text-primary" : "text-muted-foreground/60"
+                      )}
+                    />
                     {renamingId === tabId ? (
                       <input
                         ref={renameInputRef}
@@ -231,13 +243,19 @@ export function EditorTabs() {
                       <Lock size={10} className="shrink-0 text-muted-foreground/70" aria-label="Document is locked" />
                     )}
                     {tab.meta.isDirty && (
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          isActive ? "bg-primary shadow-glow-sm" : "bg-warning"
+                        )}
+                      />
                     )}
                     <button
                       aria-label={`Close ${tab.meta.title}`}
                       onClick={(e) => handleClose(e, tabId)}
                       className={cn(
-                        "ml-auto shrink-0 rounded-sm p-0.5 text-muted-foreground/40 hover:text-foreground",
+                        "ml-auto shrink-0 rounded-md p-0.5 text-muted-foreground/50 transition-colors",
+                        "hover:bg-danger/15 hover:text-danger",
                         isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                       )}
                     >
@@ -265,7 +283,7 @@ export function EditorTabs() {
       {canScrollRight && (
         <button
           onClick={() => scrollBy(1)}
-          className="absolute right-10 z-10 h-full w-6 flex items-center justify-center bg-gradient-to-l from-card/90 to-transparent text-muted-foreground hover:text-foreground"
+          className="absolute bottom-0 right-10 z-10 h-[34px] w-6 flex items-center justify-center bg-gradient-to-l from-card/90 to-transparent text-muted-foreground hover:text-foreground"
         >
           <ChevronRight size={14} />
         </button>
@@ -275,7 +293,7 @@ export function EditorTabs() {
         size="icon"
         aria-label="New tab"
         onClick={() => openTab()}
-        className="h-full w-9 shrink-0 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="mb-0.5 h-[30px] w-8 shrink-0 self-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
       >
         <Plus size={15} />
       </Button>

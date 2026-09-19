@@ -26,6 +26,10 @@ export default {
           DEFAULT: "hsl(var(--accent))", // #06B6D4
           foreground: "hsl(var(--accent-foreground))",
         },
+        accent2: {
+          DEFAULT: "hsl(var(--accent2))", // #8B5CF6
+          foreground: "hsl(var(--accent-foreground))",
+        },
         success: "hsl(var(--success))", // #10B981
         warning: "hsl(var(--warning))", // #F59E0B
         danger: "hsl(var(--danger))", // #EF4444
@@ -56,6 +60,10 @@ export default {
       boxShadow: {
         soft: "0 2px 12px -2px rgb(0 0 0 / 0.08)",
         panel: "0 8px 30px -8px rgb(0 0 0 / 0.15)",
+        glow: "0 0 26px -8px hsl(var(--primary) / 0.55)",
+        "glow-sm": "0 0 14px -4px hsl(var(--primary) / 0.5)",
+        "glow-accent": "0 0 24px -8px hsl(var(--accent2) / 0.5)",
+        "inset-card": "inset 0 1px 0 0 hsl(var(--border) / 0.4)",
       },
       backdropBlur: {
         xs: "2px",

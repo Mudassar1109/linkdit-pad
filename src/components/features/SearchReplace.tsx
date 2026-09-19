@@ -113,7 +113,7 @@ export function SearchReplace() {
           transition={{ duration: 0.15 }}
           className="absolute top-0 left-0 right-0 z-20 border-b border-border overflow-hidden shadow-panel"
         >
-          <div className="flex items-start gap-2 p-3 bg-background/95 backdrop-blur-sm">
+          <div className="flex items-start gap-2 p-3 glass-panel rounded-none border-0">
             <div className="flex-1 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">

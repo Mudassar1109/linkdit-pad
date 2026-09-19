@@ -95,7 +95,8 @@ export function RichTextEditor({ content, direction, onChange, fileId, editable 
       attributes: {
         class: cn(
           "prose prose-neutral dark:prose-invert max-w-none",
-          "min-h-full px-8 py-10",
+          "min-h-full w-full mx-auto px-10 py-12",
+          "max-w-[920px]",
           direction === "rtl" && "editor-urdu"
         ),
         dir: direction,

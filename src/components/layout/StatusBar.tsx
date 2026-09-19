@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useActiveTab, useEditorStore } from "@/store/useEditorStore";
 import { useEditorBridge } from "@/store/useEditorBridge";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { cn } from "@/lib/utils";
 import type { EditorMode } from "@/types/editor";
 
 const MODES: { id: EditorMode; label: string }[] = [
@@ -13,6 +14,7 @@ const MODES: { id: EditorMode; label: string }[] = [
 
 export function StatusBar() {
   const activeTab = useActiveTab();
+  const tabs = useEditorStore((s) => s.tabs);
   const setMode = useEditorStore((s) => s.setMode);
   const showStatusBar = useSettingsStore((s) => s.appearance.showStatusBar);
   const editor = useEditorBridge((s) => s.editor);
@@ -46,6 +48,8 @@ export function StatusBar() {
     lineCount = (content.match(/\n/g) || []).length + 1;
   }
 
+  const pendingAutosave = Object.values(tabs).some((t) => t.meta.isDirty && t.meta.filePath);
+
   if (!showStatusBar) return null;
 
   return (
@@ -53,24 +57,43 @@ export function StatusBar() {
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.2 }}
-      className="flex h-7 items-center justify-between border-t border-border bg-card/60 px-3 text-[11px] text-muted-foreground shrink-0"
+      className="flex h-8 items-center justify-between border-t border-border/80 bg-card/60 px-3 text-[11px] text-muted-foreground shrink-0"
     >
-      <div className="flex items-center gap-4">
-        <span className="hover:text-foreground cursor-default transition-colors">
+      <div className="flex items-center gap-3">
+        <span className="tabular-nums hover:text-foreground cursor-default transition-colors">
           Ln {currentLine}, Col {Math.max(0, currentCol)}
         </span>
-        <span className="w-px h-3 bg-border" />
-        <span>{wordCount} words</span>
-        <span className="w-px h-3 bg-border" />
-        <span>{charCount} chars</span>
-        <span className="w-px h-3 bg-border" />
-        <span>{lineCount} lines</span>
+        <span className="w-px h-3.5 bg-border/60" />
+        <span className="tabular-nums">{wordCount} words</span>
+        <span className="w-px h-3.5 bg-border/60" />
+        <span className="tabular-nums">{charCount} chars</span>
+        <span className="w-px h-3.5 bg-border/60" />
+        <span className="tabular-nums">{lineCount} lines</span>
       </div>
 
       <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            "flex items-center gap-1.5 rounded-full border px-2 py-0.5 transition-colors duration-150",
+            pendingAutosave
+              ? "border-warning/40 bg-warning/10 text-warning"
+              : "border-success/40 bg-success/10 text-success"
+          )}
+          title={pendingAutosave ? "Auto Save pending..." : "Auto Save enabled"}
+        >
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              pendingAutosave
+                ? "bg-warning animate-autosave-pulse shadow-glow-sm"
+                : "bg-success shadow-glow-sm"
+            )}
+          />
+          Auto Save
+        </span>
         {activeTab?.meta.isDirty && (
           <span className="flex items-center gap-1 text-warning">
-            <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+            <span className="h-1.5 w-1.5 rounded-full bg-warning animate-autosave-pulse" />
             Unsaved
           </span>
         )}
@@ -80,16 +103,16 @@ export function StatusBar() {
             Saved
           </span>
         )}
-        <span className="w-px h-3 bg-border" />
+        <span className="w-px h-3.5 bg-border/60" />
         <span>UTF-8</span>
-        <span className="w-px h-3 bg-border" />
+        <span className="w-px h-3.5 bg-border/60" />
         <span>CRLF</span>
-        <span className="w-px h-3 bg-border" />
+        <span className="w-px h-3.5 bg-border/60" />
         {activeTab && (
           <select
             value={activeTab.mode}
             onChange={(e) => setMode(activeTab.meta.id, e.target.value as EditorMode)}
-            className="rounded bg-transparent text-[11px] text-muted-foreground hover:text-foreground focus:outline-none cursor-pointer"
+            className="rounded-md bg-transparent px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
           >
             {MODES.map((m) => (
               <option key={m.id} value={m.id}>{m.label}</option>

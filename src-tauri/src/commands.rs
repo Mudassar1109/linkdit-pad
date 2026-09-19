@@ -1,10 +1,37 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
 use tauri::State;
 
 use crate::db::Db;
 use crate::error::AppError;
 use crate::AppResult;
+
+/// Holds a `.ldp` file path delivered through the OS (double-click file
+/// association or a command-line argument) until the frontend is ready to
+/// pick it up. It is also set by the single-instance callback so the second
+/// launch’s argument survives even if the running window hasn’t finished
+/// registering its event listener yet.
+pub(crate) static PENDING_OPEN_PATH: Mutex<Option<String>> = Mutex::new(None);
+
+/// Extracts the first `.ldp` file path from a command-line argument list.
+/// The leading executable argument (argv[0]) and any stray quotes are ignored.
+pub(crate) fn extract_open_path(args: &[String]) -> Option<String> {
+    args.iter()
+        .map(|a| a.trim_matches('"').to_string())
+        .find(|a| a.to_lowercase().ends_with(".ldp"))
+}
+
+/// Returns and clears the pending file path captured at application startup.
+/// The frontend polls this once on mount so the window can open the document
+/// that launched the app (e.g. double-clicking an associated `.ldp` file).
+#[tauri::command]
+pub fn take_pending_open_path() -> Option<String> {
+    PENDING_OPEN_PATH
+        .lock()
+        .ok()
+        .and_then(|mut guard| guard.take())
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DocumentPayload {

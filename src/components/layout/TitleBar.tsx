@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
-import { Minus, Square, X, Copy } from "lucide-react";
+import { Minus, Square, X, Copy, Sun, Moon, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/store/useEditorStore";
 import { useConfirmStore } from "@/store/useConfirmStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
+import { useThemeStore } from "@/store/useThemeStore";
 import { saveFile } from "./Toolbar";
 import { markCleanExit } from "@/lib/sessionStore";
+import appLogo from "../../../src-tauri/icons/32 × 32 px.png";
 import type { Window as TauriWindow } from "@tauri-apps/api/window";
 
 /**
@@ -15,6 +18,9 @@ import type { Window as TauriWindow } from "@tauri-apps/api/window";
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
   const [appWindow, setAppWindow] = useState<TauriWindow | null>(null);
+  const resolvedMode = useThemeStore((s) => s.resolvedMode);
+  const setThemeMode = useThemeStore((s) => s.setThemeMode);
+  const toggleSettings = useSettingsStore((s) => s.toggle);
 
   useEffect(() => {
     let disposed = false;
@@ -60,14 +66,31 @@ export function TitleBar() {
   return (
     <header
       data-tauri-drag-region
-      className="flex h-10 select-none items-center justify-between glass-surface"
+      className="flex h-10 select-none items-center justify-between glass-surface border-b border-border/80"
     >
-      <div data-tauri-drag-region className="flex items-center gap-2 px-3 text-sm font-medium">
-        <div className="h-4 w-4 rounded-sm bg-primary" aria-hidden />
-        <span>LinkDit Pad</span>
+      <div data-tauri-drag-region className="flex items-center gap-2.5 px-3">
+        <img
+          src={appLogo}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="h-[18px] w-[18px] rounded-[5px] object-contain shadow-glow-sm"
+        />
+        <span className="text-sm font-semibold tracking-tight">LinkDit Pad</span>
+        <span className="hidden h-3 w-px bg-border/80 md:block" aria-hidden />
+        <span className="hidden text-[11px] font-medium text-muted-foreground md:block">
+          Write &bull; Organize &bull; Create Better
+        </span>
       </div>
 
       <div className="flex h-full">
+        <TitleBarButton label="Toggle theme" onClick={() => setThemeMode(resolvedMode === "dark" ? "light" : "dark")}>
+          {resolvedMode === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+        </TitleBarButton>
+        <TitleBarButton label="Settings" onClick={() => toggleSettings()}>
+          <Settings size={14} />
+        </TitleBarButton>
+        <div className="mx-1 self-center h-4 w-px bg-border/80" aria-hidden />
         <TitleBarButton label="Minimize" onClick={() => appWindow?.minimize()}>
           <Minus size={14} />
         </TitleBarButton>

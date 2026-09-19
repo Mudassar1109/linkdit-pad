@@ -24,12 +24,22 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: https://asset.localhost"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: https://asset.localhost https:"
     }
   },
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi"],
+    "fileAssociations": [
+      {
+        "ext": ["ldp"],
+        "name": "LinkDit Pad Document",
+        "description": "LinkDit Pad Document",
+        "mimeType": "application/json",
+        "role": "Editor",
+        "rank": "Owner"
+      }
+    ],
     "icon": [
       "icons/16 × 16 px.png",
       "icons/20 × 20 px.png",
@@ -50,7 +60,8 @@
       "nsis": {
         "installMode": "perMachine",
         "installerIcon": "icons/icon.ico",
-        "uninstallerIcon": "icons/icon.ico"
+        "uninstallerIcon": "icons/icon.ico",
+        "installerHooks": "hooks/file-associations.nsh"
       }
     }
   }

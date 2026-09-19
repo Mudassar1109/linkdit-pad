@@ -4,11 +4,11 @@ import {
   Bold, Italic, Underline, Strikethrough, Highlighter, Palette,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, ListChecks, Table, Smile,
-  Search, Settings, Replace, Undo2, Redo2, Type, CaseSensitive,
+  Search, Replace, Undo2, Redo2, Type, CaseSensitive,
   Indent, Outdent, Minus, X,
   Heading1, Heading2, Heading3, Quote, Code, Image,
   Link, Subscript, Superscript, Eraser, BookmarkPlus,
-  Sun, Moon, Printer, FileText,
+  Printer, FileText,
   SquareSplitVertical, SquareSplitHorizontal, ListTree, History,
   DatabaseBackup, LockKeyhole, LockKeyholeOpen,
 } from "lucide-react";
@@ -23,8 +23,6 @@ import { useEditorBridge } from "@/store/useEditorBridge";
 import { useEditorStore, getFocusedPaneTabId } from "@/store/useEditorStore";
 import { useCommandPaletteStore } from "@/store/useCommandPaletteStore";
 import { useSearchStore } from "@/store/useSearchStore";
-import { useSettingsStore } from "@/store/useSettingsStore";
-import { useThemeStore } from "@/store/useThemeStore";
 import { useConfirmStore } from "@/store/useConfirmStore";
 import { useToastStore } from "@/store/useToastStore";
 import { useFontStore, type FontEntry } from "@/store/useFontStore";
@@ -59,7 +57,7 @@ function ToolbarButton({ icon: Icon, label, onClick, shortcut, isActive }: Toolb
           size="icon"
           onClick={onClick}
           data-state={isActive ? "on" : "off"}
-          className="h-8 w-8 data-[state=on]:bg-muted data-[state=on]:text-foreground"
+          className="h-[30px] w-[30px] rounded-lg transition-all duration-150 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-glow-sm"
         >
           <Icon size={16} />
         </Button>
@@ -416,7 +414,7 @@ function TextColorButton() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" data-state={isActive ? "on" : "off"} className="h-8 w-8 data-[state=on]:bg-muted">
+        <Button variant="ghost" size="icon" data-state={isActive ? "on" : "off"} className="h-[30px] w-[30px] rounded-lg data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-glow-sm">
           <Palette size={16} />
         </Button>
       </PopoverTrigger>
@@ -464,7 +462,7 @@ function TableMenu() {
   );
 }
 
-async function openFileRaw(raw: string, name: string) {
+export async function openFileRaw(raw: string, name: string) {
   const format = getFormatFromPath(name);
   const loader = getLoader(format);
   let content: string;
@@ -1013,11 +1011,11 @@ function MenuBar() {
   ];
 
   return (
-    <div className="flex h-8 items-center gap-0.5 px-1">
+    <div className="flex h-9 items-center gap-0.5 px-1.5">
       {menus.map((menu) => (
         <DropdownMenu key={menu.label}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-7 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" className="h-7 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-muted/70 hover:text-foreground">
               {menu.label}
             </Button>
           </DropdownMenuTrigger>
@@ -1161,21 +1159,18 @@ function ToolbarActions() {
   useEditorBridge((s) => s.version);
   const openTab = useEditorStore((s) => s.openTab);
   const toggleSearch = useSearchStore((s) => s.setIsVisible);
-  const toggleSettings = useSettingsStore((s) => s.toggle);
-  const resolvedMode = useThemeStore((s) => s.resolvedMode);
-  const setThemeMode = useThemeStore((s) => s.setThemeMode);
 
   const b = (name: string, attrs?: Record<string, string | boolean>) => editor?.isActive(name, attrs) ?? false;
 
   return (
-    <div className="flex items-center gap-0.5 px-2 overflow-x-auto">
+    <div className="flex items-center gap-0.5 overflow-x-auto px-2 py-1">
       <ToolbarButton icon={FilePlus} label="New" shortcut="Ctrl+N" onClick={() => openTab()} />
       <ToolbarButton icon={File} label="Open" shortcut="Ctrl+O" onClick={openFile} />
       <ToolbarButton icon={Save} label="Save" shortcut="Ctrl+S" onClick={saveFile} />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <ToolbarButton icon={Undo2} label="Undo" shortcut="Ctrl+Z" isActive={false} onClick={withEditor((e) => e.chain().focus().undo().run())} />
       <ToolbarButton icon={Redo2} label="Redo" shortcut="Ctrl+Y" isActive={false} onClick={withEditor((e) => e.chain().focus().redo().run())} />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <ToolbarButton icon={Scissors} label="Cut" shortcut="Ctrl+X" onClick={() => {
         const ed = useEditorBridge.getState().editor;
         if (ed) {
@@ -1192,53 +1187,35 @@ function ToolbarActions() {
         }
       }} />
       <ToolbarButton icon={Clipboard} label="Paste" shortcut="Ctrl+V" onClick={() => navigator.clipboard.readText().then(text => { const ed = useEditorBridge.getState().editor; if (ed) ed.chain().focus().insertContent(text).run(); })} />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <ToolbarButton icon={Bold} label="Bold" shortcut="Ctrl+B" isActive={b("bold")} onClick={withEditor((e) => e.chain().focus().toggleBold().run())} />
       <ToolbarButton icon={Italic} label="Italic" shortcut="Ctrl+I" isActive={b("italic")} onClick={withEditor((e) => e.chain().focus().toggleItalic().run())} />
       <ToolbarButton icon={Underline} label="Underline" shortcut="Ctrl+U" isActive={b("underline")} onClick={withEditor((e) => e.chain().focus().toggleUnderline().run())} />
       <ToolbarButton icon={Strikethrough} label="Strikethrough" isActive={b("strike")} onClick={withEditor((e) => e.chain().focus().toggleStrike().run())} />
       <ToolbarButton icon={Highlighter} label="Highlight" isActive={b("highlight")} onClick={withEditor((e) => e.chain().focus().toggleHighlight().run())} />
       <TextColorButton />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <FontSelector />
       <FontSizeSelector />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <ToolbarButton icon={AlignLeft} label="Align Left" isActive={b("textAlign", { textAlign: "left" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("left").run())} />
       <ToolbarButton icon={AlignCenter} label="Align Center" isActive={b("textAlign", { textAlign: "center" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("center").run())} />
       <ToolbarButton icon={AlignRight} label="Align Right" isActive={b("textAlign", { textAlign: "right" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("right").run())} />
       <ToolbarButton icon={AlignJustify} label="Justify" isActive={b("textAlign", { textAlign: "justify" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("justify").run())} />
       <ToolbarButton icon={Indent} label="Indent" onClick={withEditor((e) => e.chain().focus().sinkListItem("listItem").run())} />
       <ToolbarButton icon={Outdent} label="Outdent" onClick={withEditor((e) => e.chain().focus().liftListItem("listItem").run())} />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <ToolbarButton icon={List} label="Bullet List" isActive={b("bulletList")} onClick={withEditor((e) => e.chain().focus().toggleBulletList().run())} />
       <ToolbarButton icon={ListOrdered} label="Number List" isActive={b("orderedList")} onClick={withEditor((e) => e.chain().focus().toggleOrderedList().run())} />
       <ToolbarButton icon={ListChecks} label="Task List" isActive={b("taskList")} onClick={withEditor((e) => e.chain().focus().toggleTaskList().run())} />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <TableMenu />
       <EmojiPicker />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <ToolbarButton icon={Search} label="Search" shortcut="Ctrl+F" onClick={() => toggleSearch(true)} />
       <ToolbarButton icon={Replace} label="Replace" shortcut="Ctrl+H" onClick={() => toggleSearch(true)} />
-      <Separator orientation="vertical" className="mx-1 h-5" />
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <ToolbarButton icon={BookmarkPlus} label="Add Bookmark" shortcut="Ctrl+Shift+K" onClick={addBookmarkAtCursor} />
-      <div className="ml-auto flex items-center gap-0.5">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setThemeMode(resolvedMode === "dark" ? "light" : "dark")}
-              className="h-8 w-8"
-            >
-              {resolvedMode === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {resolvedMode === "dark" ? "Light Mode" : "Dark Mode"}
-          </TooltipContent>
-        </Tooltip>
-        <ToolbarButton icon={Settings} label="Settings" onClick={toggleSettings} />
-      </div>
     </div>
   );
 }
@@ -1249,10 +1226,10 @@ export function Toolbar() {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
-      className="flex flex-col border-b border-border bg-card/50"
+      className="flex flex-col border-b border-border/80 bg-card/50"
     >
       <MenuBar />
-      <div className="border-t border-border/50">
+      <div className="border-t border-border/40">
         <ToolbarActions />
       </div>
       <DocumentPropertiesDialog />

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { TitleBar } from "@/components/layout/TitleBar";
 import { Toolbar, openFile, saveFile, saveFileAs } from "@/components/layout/Toolbar";
+import { FileOpenBridge } from "@/components/FileOpenBridge";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { StatusBar } from "@/components/layout/StatusBar";
 import { EditorTabs } from "@/components/editor/EditorTabs";
@@ -322,6 +323,7 @@ export default function App() {
         <VersionHistoryDialog />
         <BackupRecoveryDialog />
         <LockPasswordDialog />
+        <FileOpenBridge />
         <Toaster />
         {showRecoveryDialog && (
           <RecoveryDialog

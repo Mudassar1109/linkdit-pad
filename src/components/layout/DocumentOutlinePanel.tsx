@@ -80,8 +80,8 @@ function Row({ node, depth }: { node: OutlineNode; depth: number }) {
         onClick={jump}
         title={node.text}
         className={cn(
-          "group flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-foreground/90 transition-colors",
-          "hover:bg-muted/70 hover:text-foreground"
+          "group flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-foreground/90 transition-all duration-150",
+          "hover:bg-primary/10 hover:text-primary hover:shadow-glow-sm"
         )}
         style={{ paddingLeft: 8 + depth * 14 }}
       >
@@ -125,9 +125,11 @@ export function DocumentOutlinePanel() {
       className="flex h-full shrink-0 flex-col border-l border-border bg-card/40"
       aria-label="Document Outline"
     >
-      <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3">
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          <ListTree size={13} />
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/70 px-3">
+        <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/60 text-primary">
+            <ListTree size={13} />
+          </span>
           Document Outline
         </span>
         <Button
