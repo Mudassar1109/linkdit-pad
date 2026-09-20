@@ -10,7 +10,7 @@ import {
   Link, Subscript, Superscript, Eraser, BookmarkPlus,
   Printer, FileText,
   SquareSplitVertical, SquareSplitHorizontal, ListTree, History,
-  DatabaseBackup, LockKeyhole, LockKeyholeOpen,
+  DatabaseBackup, LockKeyhole, LockKeyholeOpen, Camera,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ import {
   prepareContentForSave, getFormatExtension, getFormatMimeType,
 } from "@/lib/fileFormats";
 import { getLoader } from "@/lib/loaders";
+import { saveFocusedDocument } from "@/lib/saveDocument";
+import { ScreenshotDialog } from "@/components/features/ScreenshotDialog";
 
 interface ToolbarButtonProps {
   icon: React.ElementType;
@@ -531,32 +533,26 @@ export async function openFileAtPath(filePath: string) {
 }
 
 export async function saveFile() {
-  useEditorStore.getState().commitFocusedPaneToTab();
-  const editor = useEditorBridge.getState().editor;
-  const state = useEditorStore.getState();
-  const focusedTabId = getFocusedPaneTabId(state);
-  const activeTab = state.tabs[focusedTabId ?? ""];
-  if (!editor || !activeTab) return;
-  const content = activeTab.mode === "rich" ? editor.getHTML() : activeTab.content;
-
-  if (activeTab.meta.filePath) {
-    const format = getFormatFromPath(activeTab.meta.filePath);
-    const output = prepareContentForSave(content, activeTab.mode, activeTab.meta.title, format);
-    try {
-      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
-      await writeTextFile(activeTab.meta.filePath, output);
-      state.markSaved(activeTab.meta.id, activeTab.meta.filePath);
-      useToastStore.getState().show("success", `Saved "${activeTab.meta.title}"`);
-      return;
-    } catch {
-      downloadFile(output, activeTab.meta.title, format);
-      state.markSaved(activeTab.meta.id, activeTab.meta.filePath);
-      useToastStore.getState().show("warning", `Saved as download`);
-      return;
-    }
+  const outcome = await saveFocusedDocument();
+  if (outcome.status === "no-tab") return;
+  if (outcome.status === "no-path") {
+    await saveFileAs();
+    return;
   }
-
-  await saveFileAs();
+  if (outcome.status === "saved") {
+    useToastStore.getState().show("success", `Saved "${outcome.title}"`);
+    return;
+  }
+  if (outcome.status === "not-dirty") {
+    const title = useEditorStore.getState().tabs[outcome.tabId]?.meta.title ?? "document";
+    useToastStore.getState().show("success", `Saved "${title}"`);
+    return;
+  }
+  // Disk write failed in the Tauri layer. Preserve the dirty state so the
+  // failure is visible and retryable, and offer a browser download of the
+  // identical serialized bytes as data-loss protection.
+  downloadFile(outcome.output, outcome.title, outcome.format);
+  useToastStore.getState().show("warning", `Could not save to disk: ${outcome.message}`);
 }
 
 export async function saveFileAs() {
@@ -1159,11 +1155,13 @@ function ToolbarActions() {
   useEditorBridge((s) => s.version);
   const openTab = useEditorStore((s) => s.openTab);
   const toggleSearch = useSearchStore((s) => s.setIsVisible);
+  const [screenshotOpen, setScreenshotOpen] = useState(false);
 
   const b = (name: string, attrs?: Record<string, string | boolean>) => editor?.isActive(name, attrs) ?? false;
 
   return (
-    <div className="flex items-center gap-0.5 overflow-x-auto px-2 py-1">
+    <>
+      <div className="flex items-center gap-0.5 overflow-x-auto px-2 py-1">
       <ToolbarButton icon={FilePlus} label="New" shortcut="Ctrl+N" onClick={() => openTab()} />
       <ToolbarButton icon={File} label="Open" shortcut="Ctrl+O" onClick={openFile} />
       <ToolbarButton icon={Save} label="Save" shortcut="Ctrl+S" onClick={saveFile} />
@@ -1216,7 +1214,11 @@ function ToolbarActions() {
       <ToolbarButton icon={Replace} label="Replace" shortcut="Ctrl+H" onClick={() => toggleSearch(true)} />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <ToolbarButton icon={BookmarkPlus} label="Add Bookmark" shortcut="Ctrl+Shift+K" onClick={addBookmarkAtCursor} />
-    </div>
+      <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
+      <ToolbarButton icon={Camera} label="Capture Screenshot" onClick={() => setScreenshotOpen(true)} />
+      </div>
+      <ScreenshotDialog open={screenshotOpen} onOpenChange={setScreenshotOpen} />
+    </>
   );
 }
 

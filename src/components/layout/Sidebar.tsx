@@ -52,7 +52,7 @@ const SYS_NAV: SidebarNavItem[] = [
     id: "about",
     label: "About",
     icon: Info,
-    action: () => useToastStore.getState().show("info", "LinkDit Pad v0.1.1  \u2022  Write \u2022 Organize \u2022 Create Better"),
+    action: () => useToastStore.getState().show("info", "LinkDit Pad v0.1.2  \u2022  Write \u2022 Organize \u2022 Create Better"),
     tooltip: "About",
   },
 ];

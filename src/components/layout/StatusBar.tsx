@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useActiveTab, useEditorStore } from "@/store/useEditorStore";
 import { useEditorBridge } from "@/store/useEditorBridge";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useAutosaveStore } from "@/store/useAutosaveStore";
 import { cn } from "@/lib/utils";
 import type { EditorMode } from "@/types/editor";
 
@@ -14,9 +15,11 @@ const MODES: { id: EditorMode; label: string }[] = [
 
 export function StatusBar() {
   const activeTab = useActiveTab();
-  const tabs = useEditorStore((s) => s.tabs);
   const setMode = useEditorStore((s) => s.setMode);
   const showStatusBar = useSettingsStore((s) => s.appearance.showStatusBar);
+  const autoSaveEnabled = useSettingsStore((s) => s.editor.autoSave);
+  const autosaveStatus = useAutosaveStore((s) => s.status);
+  const autosaveError = useAutosaveStore((s) => s.error);
   const editor = useEditorBridge((s) => s.editor);
   useEditorBridge((s) => s.version);
 
@@ -48,8 +51,6 @@ export function StatusBar() {
     lineCount = (content.match(/\n/g) || []).length + 1;
   }
 
-  const pendingAutosave = Object.values(tabs).some((t) => t.meta.isDirty && t.meta.filePath);
-
   if (!showStatusBar) return null;
 
   return (
@@ -75,21 +76,48 @@ export function StatusBar() {
         <span
           className={cn(
             "flex items-center gap-1.5 rounded-full border px-2 py-0.5 transition-colors duration-150",
-            pendingAutosave
-              ? "border-warning/40 bg-warning/10 text-warning"
-              : "border-success/40 bg-success/10 text-success"
+            !autoSaveEnabled
+              ? "border-border/60 bg-muted/40 text-muted-foreground"
+              : autosaveStatus === "saving"
+                ? "border-warning/40 bg-warning/10 text-warning"
+                : autosaveStatus === "error"
+                  ? "border-danger/40 bg-danger/10 text-danger"
+                  : "border-success/40 bg-success/10 text-success"
           )}
-          title={pendingAutosave ? "Auto Save pending..." : "Auto Save enabled"}
+          title={
+            autosaveStatus === "error" && autosaveError
+              ? `Auto-save failed: ${autosaveError}`
+              : autoSaveEnabled
+                ? "Auto Save writes the current document to its file on disk"
+                : "Auto Save is disabled"
+          }
         >
-          <span
-            className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              pendingAutosave
-                ? "bg-warning animate-autosave-pulse shadow-glow-sm"
-                : "bg-success shadow-glow-sm"
-            )}
-          />
-          Auto Save
+          {autoSaveEnabled ? (
+            <>
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  autosaveStatus === "saving"
+                    ? "bg-warning animate-autosave-pulse shadow-glow-sm"
+                    : autosaveStatus === "error"
+                      ? "bg-danger"
+                      : "bg-success shadow-glow-sm"
+                )}
+              />
+              {autosaveStatus === "saving"
+                ? "Saving…"
+                : autosaveStatus === "saved"
+                  ? "Saved"
+                  : autosaveStatus === "error"
+                    ? "Auto-save failed"
+                    : "Auto Save"}
+            </>
+          ) : (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
+              Auto Save off
+            </>
+          )}
         </span>
         {activeTab?.meta.isDirty && (
           <span className="flex items-center gap-1 text-warning">
