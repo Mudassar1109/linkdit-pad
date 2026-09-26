@@ -16,6 +16,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFileExplorerStore } from "@/store/useFileExplorerStore";
 import type { FileNode } from "@/types/file";
+import { useI18n } from "@/store/useI18nStore";
 
 function getFileIcon(node: FileNode, isExpanded: boolean) {
   if (node.type === "folder") {
@@ -34,6 +35,7 @@ function getFileIcon(node: FileNode, isExpanded: boolean) {
 }
 
 function FileTreeItem({ node, depth = 0 }: { node: FileNode; depth?: number }) {
+  const { t } = useI18n();
   const { selectedId, expandedIds, selectNode, toggleExpand, renameNode, removeNode, duplicateNode, setClipboard } = useFileExplorerStore();
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(node.name);
@@ -123,7 +125,7 @@ function FileTreeItem({ node, depth = 0 }: { node: FileNode; depth?: number }) {
                     <FilePlus size={12} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">New File</TooltipContent>
+                <TooltipContent side="top">{t("panels.files.newFile")}</TooltipContent>
               </Tooltip>
             )}
             {isFolder && (
@@ -133,7 +135,7 @@ function FileTreeItem({ node, depth = 0 }: { node: FileNode; depth?: number }) {
                     <FolderPlus size={12} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">New Folder</TooltipContent>
+                <TooltipContent side="top">{t("panels.files.newFolder")}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -160,36 +162,36 @@ function FileTreeItem({ node, depth = 0 }: { node: FileNode; depth?: number }) {
         {isFolder && (
           <>
             <ContextMenuItem onClick={() => useFileExplorerStore.getState().addNode(node.id, "file")}>
-              <FilePlus size={14} /> New File
+              <FilePlus size={14} /> {t("panels.files.newFile")}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => useFileExplorerStore.getState().addNode(node.id, "folder")}>
-              <FolderPlus size={14} /> New Folder
+              <FolderPlus size={14} /> {t("panels.files.newFolder")}
             </ContextMenuItem>
             <ContextMenuSeparator />
           </>
         )}
         <ContextMenuItem onClick={() => { setIsRenaming(true); setRenameValue(node.name); }}>
-          <Edit3 size={14} /> Rename
+          <Edit3 size={14} /> {t("common.rename")}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => duplicateNode(node.id)}>
-          <Copy size={14} /> Duplicate
+          <Copy size={14} /> {t("common.duplicate")}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => setClipboard({ action: "copy", node })}>
-          <Copy size={14} /> Copy
+          <Copy size={14} /> {t("common.copy")}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => setClipboard({ action: "cut", node })}>
-          <Scissors size={14} /> Cut
+          <Scissors size={14} /> {t("common.cut")}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => {
           const clipboard = useFileExplorerStore.getState().clipboard;
           if (clipboard) useFileExplorerStore.getState().pasteNode(node.id);
         }}>
-          <Clipboard size={14} /> Paste
+          <Clipboard size={14} /> {t("common.paste")}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => removeNode(node.id)} className="text-danger">
-          <Trash2 size={14} /> Delete
+          <Trash2 size={14} /> {t("panels.files.delete")}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

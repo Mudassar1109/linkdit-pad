@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/context-menu";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { Bookmark } from "@/types/bookmarks";
+import { useI18n } from "@/store/useI18nStore";
 
 interface GroupEntry {
   fileId: string;
@@ -29,6 +30,7 @@ interface GroupEntry {
 }
 
 export function BookmarksPanel() {
+  const { t } = useI18n();
   const tabs = useEditorStore((s) => s.tabs);
   const bookmarks = useBookmarksStore((s) => s.bookmarks);
   const activeBookmarkId = useBookmarksStore((s) => s.activeBookmarkId);
@@ -129,7 +131,7 @@ export function BookmarksPanel() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter bookmarks..."
+            placeholder={t("panels.bookmarks.filterPlaceholder")}
             className="h-7 w-full rounded-md border border-input bg-background pl-7 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
@@ -139,12 +141,12 @@ export function BookmarksPanel() {
               onClick={() => addBookmarkAtCursor()}
               disabled={!activeTab}
               className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-              aria-label="Add bookmark at cursor"
+              aria-label={t("toolbar.addBookmark")}
             >
               <BookmarkPlus size={14} />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Add bookmark at cursor (Ctrl+Shift+K)</TooltipContent>
+          <TooltipContent side="bottom">{t("panels.bookmarks.addTooltip", { shortcut: "Ctrl+Shift+K" })}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -152,18 +154,18 @@ export function BookmarksPanel() {
         {!hasAnyBookmarks ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
             <BookmarkIcon size={32} strokeWidth={1.5} />
-            <p className="text-sm">No bookmarks yet</p>
+            <p className="text-sm">{t("panels.bookmarks.empty")}</p>
             <button
               onClick={() => addBookmarkAtCursor()}
               className="text-xs text-primary hover:underline"
             >
-              Create First Bookmark
+              {t("toolbar.addBookmark")}
             </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
             <Search size={24} strokeWidth={1.5} />
-            <p className="text-sm">No matching bookmarks</p>
+            <p className="text-sm">{t("panels.bookmarks.noMatching")}</p>
           </div>
         ) : (
           <div className="space-y-1 px-2">
@@ -248,24 +250,24 @@ export function BookmarksPanel() {
                               <div className="truncate">{bm.name}</div>
                             )}
                             <div className="text-[10px] text-muted-foreground">
-                              Ln {bm.lineNumber}, Col {Math.max(1, bm.charPosition + 1)}
+                              {t("status.lnCol", { line: bm.lineNumber, col: Math.max(1, bm.charPosition + 1) })}
                             </div>
                           </div>
                         </div>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem onClick={() => goToBookmark(bm)}>
-                          <CornerDownRight size={14} /> Go To
+                          <CornerDownRight size={14} /> {t("panels.bookmarks.goTo")}
                         </ContextMenuItem>
                         <ContextMenuItem onClick={() => startRename(bm)}>
-                          <Pencil size={14} /> Rename
+                          <Pencil size={14} /> {t("common.rename")}
                         </ContextMenuItem>
                         <ContextMenuSeparator />
                         <ContextMenuItem
                           onClick={() => removeBookmark(group.fileId, bm.id)}
                           className="text-danger"
                         >
-                          <Trash2 size={14} /> Delete
+                          <Trash2 size={14} /> {t("common.delete")}
                         </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>

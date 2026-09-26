@@ -14,6 +14,7 @@ import {
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 import type { EditorTab } from "@/types/editor";
+import { useI18n, useI18nStore } from "@/store/useI18nStore";
 
 export type DocView = "recent" | "pinned" | "history";
 
@@ -22,6 +23,7 @@ interface RecentDocumentsProps {
 }
 
 export function RecentDocuments({ view = "recent" }: RecentDocumentsProps) {
+  const { t } = useI18n();
   const tabs = useEditorStore((s) => s.tabs);
   const openTab = useEditorStore((s) => s.openTab);
   const setActiveTab = useEditorStore((s) => s.setActiveTab);
@@ -111,7 +113,7 @@ export function RecentDocuments({ view = "recent" }: RecentDocumentsProps) {
     <div className="flex h-full flex-col">
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/70 px-3">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Recent
+          {t("sidebar.recent")}
         </span>
         <div className="flex items-center gap-1">
           <span className="text-[10px] font-medium tabular-nums text-muted-foreground/80">
@@ -122,15 +124,15 @@ export function RecentDocuments({ view = "recent" }: RecentDocumentsProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="New document"
-                title="New document"
+                aria-label={t("editor.empty.newDocument")}
+                title={t("editor.empty.newDocument")}
                 onClick={handleNew}
                 className="h-6 w-6 text-muted-foreground hover:text-primary"
               >
                 <Plus size={14} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">New document (Ctrl+N)</TooltipContent>
+            <TooltipContent side="bottom">{t("panels.recent.newDocumentTooltip")}</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -141,12 +143,12 @@ export function RecentDocuments({ view = "recent" }: RecentDocumentsProps) {
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50 shadow-inset-card">
               <FileText size={22} strokeWidth={1.5} />
             </div>
-            <p className="text-sm">No recent documents</p>
+            <p className="text-sm">{t("panels.recent.emptyTitle")}</p>
             <button
               onClick={handleNew}
               className="text-xs text-primary hover:underline"
             >
-              Create a new document
+              {t("editor.empty.newDocument")}
             </button>
           </div>
         ) : (
@@ -203,7 +205,7 @@ export function RecentDocuments({ view = "recent" }: RecentDocumentsProps) {
                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                           <Clock size={9} />
                           <span className="truncate">
-                            {tab.meta.isPinned ? "Pinned" : formatRelativeTime(tab.meta.updatedAt)}
+                            {tab.meta.isPinned ? t("panels.recent.pinned") : formatRelativeTime(tab.meta.updatedAt)}
                           </span>
                         </div>
                       </div>
@@ -214,14 +216,14 @@ export function RecentDocuments({ view = "recent" }: RecentDocumentsProps) {
                             "h-6 w-6 flex items-center justify-center rounded hover:bg-muted",
                             tab.meta.isPinned ? "text-primary" : "text-muted-foreground hover:text-foreground"
                           )}
-                          title={tab.meta.isPinned ? "Unpin" : "Pin"}
+                          title={tab.meta.isPinned ? t("common.unpin") : t("common.pin")}
                         >
                           <Pin size={12} />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); closeTab(tab.meta.id); removeRecent(tab.meta.id); }}
                           className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-danger"
-                          title="Remove from Recent"
+                          title={t("common.remove")}
                         >
                           <X size={12} />
                         </button>
@@ -230,21 +232,21 @@ export function RecentDocuments({ view = "recent" }: RecentDocumentsProps) {
                   </ContextMenuTrigger>
                   <ContextMenuContent>
                     <ContextMenuItem onClick={() => handleOpen(tab)}>
-                      <FileText size={14} /> Open
+                      <FileText size={14} /> {t("panels.recent.open")}
                     </ContextMenuItem>
                     <ContextMenuItem onClick={() => handleRenameStart(tab.meta.id)}>
-                      <Pencil size={14} /> Rename
+                      <Pencil size={14} /> {t("common.rename")}
                     </ContextMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem onClick={() => { togglePin(tab.meta.id); }}>
-                      <Pin size={14} /> {tab.meta.isPinned ? "Unpin" : "Pin"}
+                      <Pin size={14} /> {tab.meta.isPinned ? t("common.unpin") : t("common.pin")}
                     </ContextMenuItem>
                     <ContextMenuItem onClick={() => { toggleBookmark(tab.meta.id); }}>
-                      <Bookmark size={14} /> {tab.meta.isBookmarked ? "Remove Bookmark" : "Bookmark"}
+                      <Bookmark size={14} /> {tab.meta.isBookmarked ? t("panels.bookmarks.remove") : t("toolbar.addBookmark")}
                     </ContextMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem onClick={() => { handleMoveToTrash(tab); }}>
-                      <Trash2 size={14} /> Move to Trash
+                      <Trash2 size={14} /> {t("tabs.moveToTrash")}
                     </ContextMenuItem>
                   </ContextMenuContent>
                 </ContextMenu>
@@ -258,6 +260,7 @@ export function RecentDocuments({ view = "recent" }: RecentDocumentsProps) {
 }
 
 function formatRelativeTime(dateStr: string): string {
+  const t = useI18nStore.getState().t;
   const now = Date.now();
   const date = new Date(dateStr).getTime();
   const diff = now - date;
@@ -266,9 +269,9 @@ function formatRelativeTime(dateStr: string): string {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
+  if (minutes < 1) return t("status.justNow");
+  if (minutes < 60) return t("status.minutesAgo", { count: minutes });
+  if (hours < 24) return t("status.hoursAgo", { count: hours });
+  if (days < 7) return t("status.daysAgo", { count: days });
   return new Date(dateStr).toLocaleDateString();
 }

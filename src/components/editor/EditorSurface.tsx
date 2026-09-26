@@ -7,6 +7,7 @@ import { RichTextEditor } from "./RichTextEditor";
 import { PlainTextEditor } from "./PlainTextEditor";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useI18n } from "@/store/useI18nStore";
 import type { EditorTab, EditorPane } from "@/types/editor";
 
 function isRichEditorFor(tab: EditorTab): boolean {
@@ -35,6 +36,8 @@ function EditorPaneView({
   tabsList: { id: string; title: string }[];
   activePane: EditorPane;
 }) {
+  const { t } = useI18n();
+  const paneName = pane === "primary" ? t("editor.pane.primary") : t("editor.pane.secondary");
   // Each pane binds to its OWN content buffer while split is active. Without
   // this, two panes showing the same document would both bind to the shared
   // tab content and mirror every keystroke into each other.
@@ -82,15 +85,15 @@ function EditorPaneView({
       onMouseDown={() => { onSetPane(pane); setHintDismissed(true); }}
       data-pane={pane}
       role="group"
-      aria-label={`${pane === "primary" ? "Primary" : "Secondary"} pane - ${tab.meta.title}`}
+      aria-label={`${paneName} - ${tab.meta.title}`}
     >
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border/70 bg-card/40 px-3">
+      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border/70 bg-surface/70 px-3">
         <FolderOpen size={12} className="shrink-0 text-muted-foreground/70" />
         <select
           value={tab.meta.id}
           onChange={(e) => onSwitchTab(e.target.value)}
-          aria-label={`${pane === "primary" ? "Primary" : "Secondary"} pane document`}
-          title="Switch document in this pane"
+          aria-label={pane === "primary" ? t("editor.pane.primaryDoc") : t("editor.pane.secondaryDoc")}
+          title={t("editor.pane.switchDocumentInPane")}
           className="h-6 min-w-0 flex-1 truncate rounded-md border border-transparent bg-muted/50 px-2 text-xs font-medium text-foreground transition-colors duration-150 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-ring hover:bg-muted/70"
         >
           {tabsList.map((t) => (
@@ -104,12 +107,12 @@ function EditorPaneView({
             <TooltipTrigger asChild>
               <span
                 className="flex h-5 w-5 items-center justify-center text-muted-foreground"
-                aria-label="Document is locked"
+                aria-label={t("editor.pane.locked")}
               >
                 <Lock size={12} />
               </span>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Document is locked</TooltipContent>
+            <TooltipContent side="bottom">{t("editor.pane.locked")}</TooltipContent>
           </Tooltip>
         ) : (
           <Tooltip>
@@ -121,13 +124,13 @@ function EditorPaneView({
                     ? "bg-primary/15 text-primary shadow-glow-sm"
                     : "text-muted-foreground/40"
                 )}
-                aria-label={activePane === pane ? "Pane is active" : "Pane is inactive"}
+                aria-label={activePane === pane ? t("editor.pane.paneActive") : t("editor.pane.paneInactive")}
               >
                 <Unlock size={12} />
               </span>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              {activePane === pane ? "Active pane (editing target)" : "Click to make this pane active"}
+              {activePane === pane ? t("editor.pane.activePaneEditing") : t("editor.pane.clickToMakeActive")}
             </TooltipContent>
           </Tooltip>
         )}
@@ -154,8 +157,8 @@ function EditorPaneView({
           />
         )}
         {paneIsEmpty && !hintDismissed && !locked && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-            <div className="relative flex flex-col items-center">
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-start justify-start px-10 py-12 text-left">
+            <div className="relative flex flex-col items-start">
               <div
                 className="absolute -inset-16 -z-10 rounded-full opacity-40 blur-3xl"
                 style={{
@@ -165,10 +168,10 @@ function EditorPaneView({
                 aria-hidden
               />
               <h2 className="text-3xl font-semibold tracking-tight text-foreground/90">
-                Untitled
+                {t("common.untitled")}
               </h2>
               <p className="mt-2 text-sm font-medium text-muted-foreground">
-                Start writing your notes...
+                {t("editor.empty.startWritingNotes")}
               </p>
             </div>
           </div>
@@ -177,7 +180,7 @@ function EditorPaneView({
           <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center bg-background/30 pt-10">
             <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs text-muted-foreground shadow-md">
               <Lock size={12} className="text-muted-foreground" />
-              This document is password-protected. Use File toolbar &mdash; Document &rarr; Unlock Document to edit.
+              {t("editor.lockBanner")}
             </div>
           </div>
         )}
@@ -187,6 +190,7 @@ function EditorPaneView({
 }
 
 export function EditorSurface() {
+  const { t } = useI18n();
   const activeTab = useActiveTab();
   const tabs = useEditorStore((s) => s.tabs);
   const splitMode = useEditorStore((s) => s.splitMode);
@@ -258,9 +262,9 @@ export function EditorSurface() {
           />
           <FileEdit size={40} strokeWidth={1.5} className="text-primary/70" />
         </div>
-        <p className="text-sm">No document open</p>
+        <p className="text-sm">{t("editor.empty.noDocumentOpen")}</p>
         <Button size="sm" onClick={() => openTab()}>
-          New document
+          {t("editor.empty.newDocument")}
         </Button>
       </div>
     );
@@ -305,8 +309,8 @@ export function EditorSurface() {
       <div
         role="separator"
         aria-orientation={isVertical ? "vertical" : "horizontal"}
-        aria-label="Drag to resize panes"
-        title="Drag to resize panes"
+        aria-label={t("editor.pane.dragToResizePanes")}
+        title={t("editor.pane.dragToResizePanes")}
         onMouseDown={(e) => startDrag(e, isVertical ? "right" : "down")}
         className={cn(
           "z-10 shrink-0 bg-border/70 transition-colors duration-150 hover:bg-primary/60 active:bg-primary/80",

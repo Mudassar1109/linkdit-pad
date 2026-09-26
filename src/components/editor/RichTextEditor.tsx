@@ -8,7 +8,7 @@ import TextStyle from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
 import Color from "@tiptap/extension-color";
 import Link from "@tiptap/extension-link";
-import Image from "@tiptap/extension-image";
+import { ImageResize } from "@/extensions/ImageResize";
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
@@ -22,8 +22,10 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useEditorBridge } from "@/store/useEditorBridge";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useI18nStore } from "@/store/useI18nStore";
 import { FontSize } from "@/extensions/FontSize";
 import { Bookmarks } from "@/extensions/Bookmarks";
+import { ParagraphAfterTable } from "@/extensions/ParagraphAfterTable";
 import type { TextDirection } from "@/types/editor";
 
 interface RichTextEditorProps {
@@ -70,16 +72,17 @@ export function RichTextEditor({ content, direction, onChange, fileId, editable 
       Color.configure({ types: ["textStyle"] }),
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Placeholder.configure({ placeholder: "Start writing…" }),
+      Placeholder.configure({ placeholder: useI18nStore.getState().t("editor.placeholders.startWriting") }),
       Link.configure({
         openOnClick: true,
         HTMLAttributes: { class: "text-primary underline cursor-pointer" },
       }),
-      Image.configure({ allowBase64: true }),
+      ImageResize.configure({ allowBase64: true }),
       Table.configure({ resizable: true }),
       TableRow,
       TableCell,
       TableHeader,
+      ParagraphAfterTable,
       TaskList,
       TaskItem.configure({ nested: true }),
       Subscript,
@@ -94,9 +97,8 @@ export function RichTextEditor({ content, direction, onChange, fileId, editable 
     editorProps: {
       attributes: {
         class: cn(
-          "prose prose-neutral dark:prose-invert max-w-none",
-          "min-h-full w-full mx-auto px-10 py-12",
-          "max-w-[920px]",
+          "prose prose-neutral dark:prose-invert",
+          "min-h-full w-full px-10 py-12",
           direction === "rtl" && "editor-urdu"
         ),
         dir: direction,

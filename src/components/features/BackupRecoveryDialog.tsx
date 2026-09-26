@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Switch } from "@/components/ui/switch";
 import { useBackupStore, type BackupEntry } from "@/store/useBackupStore";
 import { useToastStore } from "@/store/useToastStore";
+import { useI18n } from "@/store/useI18nStore";
 
 function formatTime(ts: number | string): string {
   const d = typeof ts === "string" ? new Date(ts) : new Date(ts);
@@ -17,6 +18,7 @@ function formatTime(ts: number | string): string {
 }
 
 export function BackupRecoveryDialog() {
+  const { t } = useI18n();
   const isOpen = useBackupStore((s) => s.isOpen);
   const close = useBackupStore((s) => s.close);
   const settings = useBackupStore((s) => s.settings);
@@ -49,42 +51,42 @@ export function BackupRecoveryDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DatabaseBackup size={18} />
-            Backup / Recovery
+            {t("menu.backupRecovery")}
           </DialogTitle>
           <DialogDescription>
-            Local automatic backups. Nothing is uploaded to any server.
+            {t("settings.backup.description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="rounded-lg border border-border bg-background/50 px-3 py-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-foreground">Auto Backup</p>
+              <p className="text-sm text-foreground">{t("settings.backup.autoBackup")}</p>
               <p className="text-xs text-muted-foreground">
                 {lastBackupAt
-                  ? `Last backup: ${formatTime(lastBackupAt)}`
-                  : "No backup has been created yet"}
+                  ? `${t("settings.backup.lastBackup")}: ${formatTime(lastBackupAt)}`
+                  : t("settings.backup.noBackupYet")}
               </p>
             </div>
             <Switch
               checked={settings.enabled}
               onCheckedChange={(c) => setSettings({ enabled: c })}
-              aria-label="Toggle auto backup"
+              aria-label={t("settings.backup.autoBackup")}
             />
           </div>
           <div className="mt-2 flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Backup interval</p>
+            <p className="text-xs text-muted-foreground">{t("settings.backup.interval")}</p>
             <select
               value={settings.intervalMinutes}
               onChange={(e) => setSettings({ intervalMinutes: parseInt(e.target.value) })}
-              title="Backup interval"
-              aria-label="Backup interval"
+              title={t("settings.backup.interval")}
+              aria-label={t("settings.backup.interval")}
               className="h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none"
             >
-              <option value={5}>Every 5 minutes</option>
-              <option value={15}>Every 15 minutes</option>
-              <option value={30}>Every 30 minutes</option>
-              <option value={60}>Every 60 minutes</option>
+              <option value={5}>{t("settings.backup.intervalValue", { count: 5 })}</option>
+              <option value={15}>{t("settings.backup.intervalValue", { count: 15 })}</option>
+              <option value={30}>{t("settings.backup.intervalValue", { count: 30 })}</option>
+              <option value={60}>{t("settings.backup.intervalValue", { count: 60 })}</option>
             </select>
           </div>
           <div className="mt-2 flex justify-end">
@@ -93,7 +95,7 @@ export function BackupRecoveryDialog() {
               className="flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs text-primary-foreground hover:opacity-90 transition-opacity"
             >
               <DatabaseBackup size={13} />
-              Back Up Now
+              {t("settings.backup.backUpNow")}
             </button>
           </div>
         </div>
@@ -101,9 +103,9 @@ export function BackupRecoveryDialog() {
         {allCount === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">
             <DatabaseBackup size={32} strokeWidth={1.5} />
-            <p className="text-sm">No backups available.</p>
+            <p className="text-sm">{t("settings.backup.empty")}</p>
             <p className="text-xs text-muted-foreground/70">
-              Backups are created from documents with content when Auto Backup is enabled or when you run &ldquo;Back Up Now&rdquo;.
+              {t("settings.backup.emptyHint")}
             </p>
           </div>
         ) : (
@@ -122,22 +124,22 @@ export function BackupRecoveryDialog() {
                       <div className="min-w-0 flex-1">
                         <div className="text-xs text-foreground">{formatTime(b.createdAt)}</div>
                         <div className="text-[11px] text-muted-foreground/80">
-                          {b.charCount.toLocaleString()} chars
+                          {t("status.chars", { count: b.charCount })}
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           onClick={() => handleRestore(b)}
-                          title="Recover this backup"
-                          aria-label="Recover this backup"
+                          title={t("common.restore")}
+                          aria-label={t("common.restore")}
                           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         >
                           <RotateCcw size={14} />
                         </button>
                         <button
                           onClick={() => deleteBackup(b.id)}
-                          title="Delete backup"
-                          aria-label="Delete backup"
+                          title={t("common.delete")}
+                          aria-label={t("common.delete")}
                           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-danger"
                         >
                           <Trash2 size={14} />
@@ -153,14 +155,14 @@ export function BackupRecoveryDialog() {
 
         <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground/70">
           <span>
-            Backups are stored locally. Up to 5 backups are kept per document.
+            {t("settings.backup.retentionHint")}
           </span>
           <button
-            onClick={() => useToastStore.getState().show("info", "Use File → Open to open a file backup location.")}
+            onClick={() => useToastStore.getState().show("info", t("settings.backup.openLocationToast"))}
             className="text-muted-foreground underline decoration-dotted hover:text-foreground"
-            title="Learn more"
+            title={t("settings.backup.learnMore")}
           >
-            How backups work
+            {t("settings.backup.howItWorks")}
           </button>
         </div>
       </DialogContent>

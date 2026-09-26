@@ -40,7 +40,12 @@ import {
 } from "@/lib/fileFormats";
 import { getLoader } from "@/lib/loaders";
 import { saveFocusedDocument } from "@/lib/saveDocument";
+import { openPrintDialog } from "@/lib/print";
 import { ScreenshotDialog } from "@/components/features/ScreenshotDialog";
+import { useI18n, useI18nStore } from "@/store/useI18nStore";
+import { formatDate } from "@/i18n";
+
+const i18n = () => useI18nStore.getState().t;
 
 interface ToolbarButtonProps {
   icon: React.ElementType;
@@ -79,17 +84,17 @@ function withEditor(fn: (editor: NonNullable<ReturnType<typeof useEditorBridge.g
 }
 
 const FONT_CATEGORIES = [
-  { id: "all", label: "All" },
-  { id: "recent", label: "Recent" },
-  { id: "favorites", label: "Favorites" },
-  { id: "english", label: "English" },
-  { id: "urdu", label: "Urdu" },
-  { id: "arabic", label: "Arabic" },
-  { id: "monospace", label: "Monospace" },
-  { id: "handwriting", label: "Handwriting" },
-  { id: "serif", label: "Serif" },
-  { id: "sans-serif", label: "Sans Serif" },
-  { id: "google", label: "Google Fonts" },
+  { id: "all", label: "toolbar.fontCat.all" },
+  { id: "recent", label: "toolbar.fontCat.recent" },
+  { id: "favorites", label: "toolbar.fontCat.favorites" },
+  { id: "english", label: "toolbar.fontCat.english" },
+  { id: "urdu", label: "toolbar.fontCat.urdu" },
+  { id: "arabic", label: "toolbar.fontCat.arabic" },
+  { id: "monospace", label: "toolbar.fontCat.monospace" },
+  { id: "handwriting", label: "toolbar.fontCat.handwriting" },
+  { id: "serif", label: "toolbar.fontCat.serif" },
+  { id: "sans-serif", label: "toolbar.fontCat.sansSerif" },
+  { id: "google", label: "toolbar.fontCat.google" },
 ];
 
 const GOOGLE_FONTS_LIST = [
@@ -101,6 +106,7 @@ const GOOGLE_FONTS_LIST = [
 ];
 
 function FontSelector() {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [googleInput, setGoogleInput] = useState("");
@@ -186,7 +192,7 @@ function FontSelector() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 font-mono text-xs" aria-label="Font Family" title="Font Family">
+        <Button variant="ghost" size="icon" className="h-8 w-8 font-mono text-xs" aria-label={t("toolbar.fontFamily")} title={t("toolbar.fontFamily")}>
           <CaseSensitive size={16} />
         </Button>
       </PopoverTrigger>
@@ -195,7 +201,7 @@ function FontSelector() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search fonts..."
+            placeholder={t("toolbar.searchFonts")}
             className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <div className="flex gap-1 flex-wrap max-h-20 overflow-y-auto">
@@ -206,27 +212,27 @@ function FontSelector() {
                 className={`px-2 py-0.5 rounded text-xs whitespace-nowrap ${
                   category === c.id
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+                            : "text-muted-foreground hover:bg-muted/50"
+                        }`}
+                  >
+                    {t(c.label)}
+                  </button>
+                ))}
+              </div>
 
           <div className="flex gap-1">
             <input
               value={googleInput}
               onChange={(e) => setGoogleInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleLoadGoogle(); }}
-              placeholder="Load Google Font..."
+              placeholder={t("toolbar.loadingGoogle")}
               className="flex-1 h-7 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <button
               onClick={handleLoadGoogle}
               className="h-7 px-2 rounded-md bg-primary text-primary-foreground text-xs"
             >
-              Load
+              {t("toolbar.load")}
             </button>
           </div>
 
@@ -249,7 +255,7 @@ function FontSelector() {
                         <button
                           onClick={() => removeImportedFont(f.family)}
                           className="shrink-0 h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Remove imported font"
+                          title={t("toolbar.removeImportedFont")}
                         >
                           <X size={10} />
                         </button>
@@ -263,7 +269,7 @@ function FontSelector() {
             <div className="max-h-56 overflow-y-auto space-y-0.5">
               {displayFonts.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-4">
-                  {isLoading ? "Detecting fonts..." : "No fonts found"}
+                  {isLoading ? t("toolbar.detectingFonts") : t("toolbar.noFontsFound")}
                 </p>
               )}
               {displayFonts.map((f) => (
@@ -283,7 +289,7 @@ function FontSelector() {
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
           >
             <FilePlus size={14} />
-            Import Font (TTF/OTF)
+            {t("toolbar.importFont")}
           </button>
         </div>
       </PopoverContent>
@@ -292,6 +298,7 @@ function FontSelector() {
 }
 
 function FontItem({ family, isFav, onSelect, onToggleFav }: { family: string; isFav: boolean; onSelect: () => void; onToggleFav: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-1 group">
       <button
@@ -304,7 +311,7 @@ function FontItem({ family, isFav, onSelect, onToggleFav }: { family: string; is
       <button
         onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
         className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground"
-        title={isFav ? "Remove from favorites" : "Add to favorites"}
+        title={isFav ? t("toolbar.removeFromFavorites") : t("toolbar.addToFavorites")}
       >
         {isFav ? "★" : "☆"}
       </button>
@@ -315,10 +322,11 @@ function FontItem({ family, isFav, onSelect, onToggleFav }: { family: string; is
 const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 42, 48, 60, 72];
 
 function FontSizeSelector() {
+  const { t } = useI18n();
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs font-bold" aria-label="Font Size" title="Font Size">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs font-bold" aria-label={t("toolbar.fontSize")} title={t("toolbar.fontSize")}>
           <Type size={16} />
         </Button>
       </PopoverTrigger>
@@ -408,6 +416,7 @@ function ColorPicker({ onChange, label }: { onChange: (color: string) => void; l
 }
 
 function TextColorButton() {
+  const { t } = useI18n();
   const editor = useEditorBridge((s) => s.editor);
   useEditorBridge((s) => s.version);
   const hasColor = editor ? editor.isActive("textStyle") && !!editor.getAttributes("textStyle").color : false;
@@ -421,10 +430,10 @@ function TextColorButton() {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-0">
-        <ColorPicker label="Text Color" onChange={(c) => editor?.chain().focus().setColor(c).run()} />
+        <ColorPicker label={t("toolbar.textColor")} onChange={(c) => editor?.chain().focus().setColor(c).run()} />
         <Separator />
         <div className="p-2">
-          <ColorPicker label="Highlight Color" onChange={(c) => editor?.chain().focus().setHighlight({ color: c }).run()} />
+          <ColorPicker label={t("toolbar.highlightColor")} onChange={(c) => editor?.chain().focus().setHighlight({ color: c }).run()} />
         </div>
       </PopoverContent>
     </Popover>
@@ -432,6 +441,7 @@ function TextColorButton() {
 }
 
 function TableMenu() {
+  const { t } = useI18n();
   const insertTable = (rows: number, cols: number) => {
     useEditorBridge.getState().editor?.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
   };
@@ -444,21 +454,21 @@ function TableMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[160px]">
-        <DropdownMenuItem onClick={() => insertTable(3, 3)}>Insert 3x3 Table</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => insertTable(4, 4)}>Insert 4x4 Table</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => insertTable(5, 5)}>Insert 5x5 Table</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => insertTable(3, 3)}>{t("toolbar.table.insert3x3")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => insertTable(4, 4)}>{t("toolbar.table.insert4x4")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => insertTable(5, 5)}>{t("toolbar.table.insert5x5")}</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().addColumnBefore().run())}>Add Column Left</DropdownMenuItem>
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().addColumnAfter().run())}>Add Column Right</DropdownMenuItem>
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().deleteColumn().run())}>Delete Column</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().addColumnBefore().run())}>{t("toolbar.table.addColumnLeft")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().addColumnAfter().run())}>{t("toolbar.table.addColumnRight")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().deleteColumn().run())}>{t("toolbar.table.deleteColumn")}</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().addRowBefore().run())}>Add Row Above</DropdownMenuItem>
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().addRowAfter().run())}>Add Row Below</DropdownMenuItem>
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().deleteRow().run())}>Delete Row</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().addRowBefore().run())}>{t("toolbar.table.addRowAbove")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().addRowAfter().run())}>{t("toolbar.table.addRowBelow")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().deleteRow().run())}>{t("toolbar.table.deleteRow")}</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().mergeCells().run())}>Merge Cells</DropdownMenuItem>
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().splitCell().run())}>Split Cell</DropdownMenuItem>
-        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().deleteTable().run())}>Delete Table</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().mergeCells().run())}>{t("toolbar.table.mergeCells")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().splitCell().run())}>{t("toolbar.table.splitCell")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={withEditor((e) => e.chain().focus().deleteTable().run())}>{t("toolbar.table.deleteTable")}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -488,13 +498,13 @@ export async function openFileRaw(raw: string, name: string) {
 
   const { openTab, renameTab, markSaved } = useEditorStore.getState();
   const tabId = openTab({ content, mode });
-  const fileName = name.split("\\").pop()?.split("/").pop() ?? "Untitled";
+  const fileName = name.split("\\").pop()?.split("/").pop() ?? i18n()("common.untitled");
   renameTab(tabId, fileName.replace(/\.\w+$/, ""));
   if (!isCorrupted) {
     markSaved(tabId, name);
-    useToastStore.getState().show("success", `Opened ${fileName.replace(/\.\w+$/, "")}`);
+    useToastStore.getState().show("success", i18n()("toast.opened", { name: fileName.replace(/\.\w+$/, "") }));
   } else {
-    useToastStore.getState().show("error", `File may be corrupted`);
+    useToastStore.getState().show("error", i18n()("toast.fileMayBeCorrupted"));
   }
 }
 
@@ -528,7 +538,7 @@ export async function openFileAtPath(filePath: string) {
     const raw = await readTextFile(filePath);
     await openFileRaw(raw, filePath);
   } catch {
-    useToastStore.getState().show("error", `Could not open file: ${filePath}`);
+    useToastStore.getState().show("error", i18n()("toast.couldNotOpenFile", { path: filePath }));
   }
 }
 
@@ -540,19 +550,19 @@ export async function saveFile() {
     return;
   }
   if (outcome.status === "saved") {
-    useToastStore.getState().show("success", `Saved "${outcome.title}"`);
+    useToastStore.getState().show("success", i18n()("toast.saved", { title: outcome.title }));
     return;
   }
   if (outcome.status === "not-dirty") {
-    const title = useEditorStore.getState().tabs[outcome.tabId]?.meta.title ?? "document";
-    useToastStore.getState().show("success", `Saved "${title}"`);
+    const title = useEditorStore.getState().tabs[outcome.tabId]?.meta.title ?? i18n()("common.document");
+    useToastStore.getState().show("success", i18n()("toast.saved", { title }));
     return;
   }
   // Disk write failed in the Tauri layer. Preserve the dirty state so the
   // failure is visible and retryable, and offer a browser download of the
   // identical serialized bytes as data-loss protection.
   downloadFile(outcome.output, outcome.title, outcome.format);
-  useToastStore.getState().show("warning", `Could not save to disk: ${outcome.message}`);
+  useToastStore.getState().show("warning", i18n()("toast.couldNotSaveToDisk", { message: outcome.message }));
 }
 
 export async function saveFileAs() {
@@ -577,13 +587,13 @@ export async function saveFileAs() {
     await writeTextFile(filePath as string, output);
     state.markSaved(activeTab.meta.id, filePath as string);
     const fileName = (filePath as string).split("\\").pop()?.split("/").pop() ?? activeTab.meta.title;
-    useToastStore.getState().show("success", `Saved as ${fileName}`);
+    useToastStore.getState().show("success", i18n()("toast.savedAs", { name: fileName }));
   } catch {
     const format = getFormatFromPath(activeTab.meta.filePath ?? `${activeTab.meta.title}.ldp`);
     const output = prepareContentForSave(content, activeTab.mode, activeTab.meta.title, format);
     downloadFile(output, activeTab.meta.title, format);
     state.markSaved(activeTab.meta.id, activeTab.meta.filePath);
-    useToastStore.getState().show("warning", `Saved as download`);
+    useToastStore.getState().show("warning", i18n()("toast.savedAsDownload"));
   }
 }
 
@@ -591,9 +601,9 @@ export async function deleteFile(filePath: string, title: string) {
   try {
     const { remove } = await import("@tauri-apps/plugin-fs");
     await remove(filePath);
-    useToastStore.getState().show("success", `Deleted "${title}"`);
+    useToastStore.getState().show("success", i18n()("toast.deleted", { title }));
   } catch {
-    useToastStore.getState().show("error", `Could not delete "${title}"`);
+    useToastStore.getState().show("error", i18n()("toast.couldNotDelete", { title }));
     throw new Error("Failed to delete file");
   }
 }
@@ -611,6 +621,7 @@ function downloadFile(content: string, title: string, format: import("@/lib/file
 }
 
 function MenuBar() {
+  const { t } = useI18n();
   const openTab = useEditorStore((s) => s.openTab);
   const closeTab = useEditorStore((s) => s.closeTab);
   const togglePalette = useCommandPaletteStore((s) => s.toggle);
@@ -648,17 +659,17 @@ function MenuBar() {
     const state = useEditorStore.getState();
     const id = getFocusedPaneTabId(state);
     if (!id) {
-      useToastStore.getState().show("warning", "No document open to lock.");
+      useToastStore.getState().show("warning", t("toast.noDocumentToLock"));
       return;
     }
     const lockStore = useLockStore.getState();
     if (lockStore.isProtected(id)) {
       if (lockStore.isLocked(id)) {
-        useToastStore.getState().show("info", "This document is already locked.");
+        useToastStore.getState().show("info", t("toast.alreadyLocked"));
         return;
       }
       lockStore.rejectLock(id);
-      useToastStore.getState().show("success", "Document locked again.");
+      useToastStore.getState().show("success", t("toast.lockedAgain"));
       return;
     }
     openLockDialog("lock");
@@ -668,16 +679,16 @@ function MenuBar() {
     const state = useEditorStore.getState();
     const id = getFocusedPaneTabId(state);
     if (!id) {
-      useToastStore.getState().show("warning", "No document open to unlock.");
+      useToastStore.getState().show("warning", t("toast.noDocumentToUnlock"));
       return;
     }
     const lockStore = useLockStore.getState();
     if (!lockStore.isProtected(id)) {
-      useToastStore.getState().show("info", "This document is not password protected.");
+      useToastStore.getState().show("info", t("toast.notPasswordProtected"));
       return;
     }
     if (!lockStore.isLocked(id)) {
-      useToastStore.getState().show("info", "This document is already unlocked.");
+      useToastStore.getState().show("info", t("toast.alreadyUnlocked"));
       return;
     }
     openLockDialog("unlock");
@@ -691,7 +702,7 @@ function MenuBar() {
       const tab = state.tabs[group.activeTabId];
       if (tab?.meta.isDirty) {
         const action = await useConfirmStore.getState().show(
-          `"${tab.meta.title}" has unsaved changes. Save before closing?`
+          t("dialogs.confirm.unsavedChangesBody", { title: tab.meta.title })
         );
         if (action === "cancel") return;
         if (action === "save") {
@@ -703,54 +714,12 @@ function MenuBar() {
   }, [activeGroupId, closeTab]);
 
   const handleExportPdf = useCallback(() => {
-    window.print();
+    openPrintDialog();
   }, []);
 
   const handlePrint = useCallback(() => {
-    const state = useEditorStore.getState();
-    const group = state.groups[activeGroupId];
-    const activeTabId = group?.activeTabId;
-    if (!activeTabId) return;
-    const tab = state.tabs[activeTabId];
-    if (!tab) return;
-
-    const editor = useEditorBridge.getState().editor;
-    let content = tab.content;
-    if (editor && tab.mode === "rich") {
-      content = editor.getHTML();
-    }
-
-    const printWindow = window.open("", "_blank", "width=800,height=600");
-    if (!printWindow) return;
-
-    const printHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${tab.meta.title}</title>
-          <style>
-            body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-            @media print { body { padding: 0; } }
-            h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; }
-            p { margin: 0.5em 0; }
-            pre { background: #f5f5f5; padding: 1rem; overflow: auto; }
-            code { background: #f5f5f5; padding: 0.2em 0.4em; border-radius: 3px; }
-            blockquote { border-left: 4px solid #ddd; padding-left: 1rem; color: #666; margin: 1em 0; }
-            table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-            th, td { border: 1px solid #ddd; padding: 0.5rem; }
-            img { max-width: 100%; height: auto; }
-          </style>
-        </head>
-        <body>
-          ${content}
-        </body>
-      </html>
-    `;
-    printWindow.document.write(printHtml);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 250);
-  }, [activeGroupId]);
+    openPrintDialog();
+  }, []);
 
   const handleOpenRecent = useCallback((entry: { id: string; path: string | null; title: string }) => {
     if (entry.path) {
@@ -792,9 +761,9 @@ function MenuBar() {
         }
         const { openTab, renameTab } = useEditorStore.getState();
         const tabId = openTab({ content, mode });
-        const fileName = (file as string).split("\\").pop()?.split("/").pop() ?? "Untitled";
+        const fileName = (file as string).split("\\").pop()?.split("/").pop() ?? i18n()("common.untitled");
         renameTab(tabId, fileName.replace(/\.\w+$/, ""));
-        useToastStore.getState().show("success", `Imported ${fileName.replace(/\.\w+$/, "")}`);
+        useToastStore.getState().show("success", i18n()("toast.imported", { name: fileName.replace(/\.\w+$/, "") }));
       }
     } catch {
       const input = document.createElement("input");
@@ -817,7 +786,7 @@ function MenuBar() {
           const { openTab, renameTab } = useEditorStore.getState();
           const tabId = openTab({ content, mode });
           renameTab(tabId, file2.name.replace(/\.\w+$/, ""));
-          useToastStore.getState().show("success", `Imported ${file2.name.replace(/\.\w+$/, "")}`);
+          useToastStore.getState().show("success", i18n()("toast.imported", { name: file2.name.replace(/\.\w+$/, "") }));
         }
       };
       input.click();
@@ -826,34 +795,34 @@ function MenuBar() {
 
   const menus = [
     {
-      label: "File",
+      label: t("menu.file"),
       items: [
-        { label: "New", shortcut: "Ctrl+N", icon: FilePlus, action: handleNew },
-        { label: "Open...", shortcut: "Ctrl+O", icon: File, action: openFile },
-        { label: "Save", shortcut: "Ctrl+S", icon: Save, action: saveFile },
-        { label: "Save As...", shortcut: "Ctrl+Shift+S", action: saveFileAs },
+        { label: t("menu.new"), shortcut: "Ctrl+N", icon: FilePlus, action: handleNew },
+        { label: t("menu.openFile"), shortcut: "Ctrl+O", icon: File, action: openFile },
+        { label: t("menu.save"), shortcut: "Ctrl+S", icon: Save, action: saveFile },
+        { label: t("menu.saveAs"), shortcut: "Ctrl+Shift+S", action: saveFileAs },
         { separator: true },
         {
-          label: "Import",
+          label: t("menu.import"),
           children: [
-            { label: "Markdown (.md)", icon: FileText, action: () => handleImport("md") },
-            { label: "Plain Text (.txt)", icon: FileText, action: () => handleImport("txt") },
+            { label: t("menu.importMarkdown"), icon: FileText, action: () => handleImport("md") },
+            { label: t("menu.importPlainText"), icon: FileText, action: () => handleImport("txt") },
           ],
         },
         { separator: true },
         {
-          label: "Export",
+          label: t("menu.export"),
           children: [
-            { label: "Export PDF", action: handleExportPdf },
+            { label: t("menu.exportPdf"), action: handleExportPdf },
           ],
         },
         { separator: true },
-        { label: "Print", shortcut: "Ctrl+P", icon: Printer, action: handlePrint },
+        { label: t("menu.print"), shortcut: "Ctrl+P", icon: Printer, action: handlePrint },
         { separator: true },
         {
-          label: "Recent Files",
+          label: t("menu.recentFiles"),
           children: recentFiles.length === 0
-            ? [{ label: "No Recent Files", disabled: true }]
+            ? [{ label: t("menu.noRecentFiles"), disabled: true }]
             : recentFiles.slice(0, 10).map((entry) => ({
                 label: entry.title,
                 icon: FileText,
@@ -861,19 +830,19 @@ function MenuBar() {
               })),
         },
         { separator: true },
-        { label: "Document Properties", shortcut: "Ctrl+Shift+I", icon: FileText, action: handleProperties },
+        { label: t("menu.documentProperties"), shortcut: "Ctrl+Shift+I", icon: FileText, action: handleProperties },
         { separator: true },
-        { label: "Close Tab", shortcut: "Ctrl+W", action: handleClose },
-        { label: "Exit", action: () => window.close() },
+        { label: t("menu.closeTab"), shortcut: "Ctrl+W", action: handleClose },
+        { label: t("menu.exit"), action: () => window.close() },
       ],
     },
     {
-      label: "Edit",
+      label: t("menu.edit"),
       items: [
-        { label: "Undo", shortcut: "Ctrl+Z", icon: Undo2, action: withEditor((e) => e.chain().focus().undo().run()) },
-        { label: "Redo", shortcut: "Ctrl+Y", icon: Redo2, action: withEditor((e) => e.chain().focus().redo().run()) },
+        { label: t("menu.undo"), shortcut: "Ctrl+Z", icon: Undo2, action: withEditor((e) => e.chain().focus().undo().run()) },
+        { label: t("menu.redo"), shortcut: "Ctrl+Y", icon: Redo2, action: withEditor((e) => e.chain().focus().redo().run()) },
         { separator: true },
-        { label: "Cut", shortcut: "Ctrl+X", icon: Scissors, action: () => {
+        { label: t("menu.cut"), shortcut: "Ctrl+X", icon: Scissors, action: () => {
           const ed = useEditorBridge.getState().editor;
           if (ed) {
             const { from, to } = ed.state.selection;
@@ -881,123 +850,123 @@ function MenuBar() {
             ed.chain().focus().deleteSelection().run();
           }
         } },
-        { label: "Copy", shortcut: "Ctrl+C", icon: Copy, action: () => {
+        { label: t("menu.copy"), shortcut: "Ctrl+C", icon: Copy, action: () => {
           const ed = useEditorBridge.getState().editor;
           if (ed) {
             const { from, to } = ed.state.selection;
             navigator.clipboard.writeText(ed.state.doc.textBetween(from, to));
           }
         } },
-        { label: "Paste", shortcut: "Ctrl+V", icon: Clipboard, action: () => navigator.clipboard.readText().then(text => { const ed = useEditorBridge.getState().editor; if (ed) ed.chain().focus().insertContent(text).run(); }) },
+        { label: t("menu.paste"), shortcut: "Ctrl+V", icon: Clipboard, action: () => navigator.clipboard.readText().then(text => { const ed = useEditorBridge.getState().editor; if (ed) ed.chain().focus().insertContent(text).run(); }) },
         { separator: true },
-        { label: "Select All", shortcut: "Ctrl+A", action: () => document.execCommand("selectAll") },
+        { label: t("menu.selectAll"), shortcut: "Ctrl+A", action: () => document.execCommand("selectAll") },
       ],
     },
     {
-      label: "View",
+      label: t("menu.view"),
       items: [
-        { label: "Command Palette", shortcut: "Ctrl+Shift+P", action: togglePalette },
+        { label: t("menu.commandPalette"), shortcut: "Ctrl+Shift+P", action: togglePalette },
         { separator: true },
-        { label: "Toggle Sidebar", shortcut: "Ctrl+B", action: () => useEditorStore.getState().toggleSidebar() },
+        { label: t("menu.toggleSidebar"), shortcut: "Ctrl+B", action: () => useEditorStore.getState().toggleSidebar() },
         { separator: true },
         {
-          label: "Split Right",
+          label: t("menu.splitRight"),
           icon: SquareSplitVertical,
           action: handleSplitRight,
         },
         {
-          label: "Split Down",
+          label: t("menu.splitDown"),
           icon: SquareSplitHorizontal,
           action: handleSplitDown,
         },
         {
-          label: "Close Split",
+          label: t("menu.closeSplit"),
           icon: SquareSplitHorizontal,
           disabled: splitMode === "none",
           action: handleCloseSplit,
         },
         { separator: true },
         {
-          label: "Document Outline",
+          label: t("menu.documentOutline"),
           icon: ListTree,
           action: toggleOutline,
         },
       ],
     },
     {
-      label: "Insert",
+      label: t("menu.insert"),
       items: [
-        { label: "Table", icon: Table, action: () => useEditorBridge.getState().editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-        { label: "Image", icon: Image, action: () => {
-          const url = prompt("Enter image URL:");
+        { label: t("menu.table"), icon: Table, action: () => useEditorBridge.getState().editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+        { label: t("menu.image"), icon: Image, action: () => {
+          const url = prompt(t("toolbar.insert.enterImageUrl"));
           if (url) useEditorBridge.getState().editor?.chain().focus().setImage({ src: url }).run();
         }},
-        { label: "Link", icon: Link, action: () => {
-          const url = prompt("Enter URL:");
+        { label: t("menu.link"), icon: Link, action: () => {
+          const url = prompt(t("toolbar.insert.enterUrl"));
           if (url) useEditorBridge.getState().editor?.chain().focus().setLink({ href: url }).run();
         }},
         { separator: true },
-        { label: "Horizontal Rule", icon: Minus, action: withEditor((e) => e.chain().focus().setHorizontalRule().run()) },
+        { label: t("menu.horizontalRule"), icon: Minus, action: withEditor((e) => e.chain().focus().setHorizontalRule().run()) },
         { separator: true },
-        { label: "Emoji", icon: Smile, action: () => {
+        { label: t("menu.insertEmoji"), icon: Smile, action: () => {
           const picker = document.querySelector('[data-emoji-trigger]') as HTMLButtonElement;
           if (picker) picker.click();
         }},
       ],
     },
     {
-      label: "Format",
+      label: t("menu.format"),
       items: [
-        { label: "Bold", shortcut: "Ctrl+B", icon: Bold, action: withEditor((e) => e.chain().focus().toggleBold().run()) },
-        { label: "Italic", shortcut: "Ctrl+I", icon: Italic, action: withEditor((e) => e.chain().focus().toggleItalic().run()) },
-        { label: "Underline", shortcut: "Ctrl+U", icon: Underline, action: withEditor((e) => e.chain().focus().toggleUnderline().run()) },
-        { label: "Strikethrough", icon: Strikethrough, action: withEditor((e) => e.chain().focus().toggleStrike().run()) },
-        { label: "Code", icon: Code, action: withEditor((e) => e.chain().focus().toggleCode().run()) },
+        { label: t("menu.bold"), shortcut: "Ctrl+B", icon: Bold, action: withEditor((e) => e.chain().focus().toggleBold().run()) },
+        { label: t("menu.italic"), shortcut: "Ctrl+I", icon: Italic, action: withEditor((e) => e.chain().focus().toggleItalic().run()) },
+        { label: t("menu.underline"), shortcut: "Ctrl+U", icon: Underline, action: withEditor((e) => e.chain().focus().toggleUnderline().run()) },
+        { label: t("menu.strikethrough"), icon: Strikethrough, action: withEditor((e) => e.chain().focus().toggleStrike().run()) },
+        { label: t("menu.code"), icon: Code, action: withEditor((e) => e.chain().focus().toggleCode().run()) },
         { separator: true },
-        { label: "Subscript", icon: Subscript, action: withEditor((e) => e.chain().focus().toggleSubscript().run()) },
-        { label: "Superscript", icon: Superscript, action: withEditor((e) => e.chain().focus().toggleSuperscript().run()) },
+        { label: t("menu.subscript"), icon: Subscript, action: withEditor((e) => e.chain().focus().toggleSubscript().run()) },
+        { label: t("menu.superscript"), icon: Superscript, action: withEditor((e) => e.chain().focus().toggleSuperscript().run()) },
         { separator: true },
-        { label: "Clear Formatting", icon: Eraser, action: withEditor((e) => e.chain().focus().clearNodes().unsetAllMarks().run()) },
+        { label: t("menu.clearFormatting"), icon: Eraser, action: withEditor((e) => e.chain().focus().clearNodes().unsetAllMarks().run()) },
         { separator: true },
-        { label: "Heading 1", icon: Heading1, action: withEditor((e) => e.chain().focus().toggleHeading({ level: 1 }).run()) },
-        { label: "Heading 2", icon: Heading2, action: withEditor((e) => e.chain().focus().toggleHeading({ level: 2 }).run()) },
-        { label: "Heading 3", icon: Heading3, action: withEditor((e) => e.chain().focus().toggleHeading({ level: 3 }).run()) },
+        { label: t("menu.heading1"), icon: Heading1, action: withEditor((e) => e.chain().focus().toggleHeading({ level: 1 }).run()) },
+        { label: t("menu.heading2"), icon: Heading2, action: withEditor((e) => e.chain().focus().toggleHeading({ level: 2 }).run()) },
+        { label: t("menu.heading3"), icon: Heading3, action: withEditor((e) => e.chain().focus().toggleHeading({ level: 3 }).run()) },
         { separator: true },
-        { label: "Blockquote", icon: Quote, action: withEditor((e) => e.chain().focus().toggleBlockquote().run()) },
-        { label: "Code Block", icon: Code, action: withEditor((e) => e.chain().focus().toggleCodeBlock().run()) },
+        { label: t("menu.blockquote"), icon: Quote, action: withEditor((e) => e.chain().focus().toggleBlockquote().run()) },
+        { label: t("menu.codeBlock"), icon: Code, action: withEditor((e) => e.chain().focus().toggleCodeBlock().run()) },
       ],
     },
     {
-      label: "Tools",
+      label: t("menu.tools"),
       items: [
-        { label: "Search", shortcut: "Ctrl+F", icon: Search, action: () => toggleSearch(true) },
-        { label: "Replace", shortcut: "Ctrl+H", icon: Replace, action: () => toggleSearch(true) },
+        { label: t("menu.search"), shortcut: "Ctrl+F", icon: Search, action: () => toggleSearch(true) },
+        { label: t("menu.replace"), shortcut: "Ctrl+H", icon: Replace, action: () => toggleSearch(true) },
         { separator: true },
-        { label: "Version History", icon: History, action: () => openVersionHistory() },
-        { label: "Backup / Recovery", icon: DatabaseBackup, action: () => openBackup() },
+        { label: t("menu.versionHistory"), icon: History, action: () => openVersionHistory() },
+        { label: t("menu.backupRecovery"), icon: DatabaseBackup, action: () => openBackup() },
         { separator: true },
-        { label: "Word Count", action: () => {
+        { label: t("menu.wordCount"), action: () => {
           const editor = useEditorBridge.getState().editor;
           if (editor) {
             const text = editor.state.doc.textContent;
             const words = text.trim() ? text.trim().split(/\s+/).length : 0;
             const chars = text.length;
-            alert(`Words: ${words}\nCharacters: ${chars}`);
+            alert(t("menu.wordsChars", { words, chars }));
           }
         }},
       ],
     },
     {
-      label: "Document",
+      label: t("menu.document"),
       items: [
         {
-          label: focusedIsLocked ? "Locked - Read Only" : "Lock Document",
+          label: focusedIsLocked ? t("menu.lockedReadOnly") : t("menu.lockDocument"),
           icon: LockKeyhole,
           disabled: focusedIsLocked || !focusedTabId,
           action: handleLockDocument,
         },
         {
-          label: "Unlock Document",
+          label: t("menu.unlockDocument"),
           icon: LockKeyholeOpen,
           disabled: !focusedProtected || !focusedIsLocked || !focusedTabId,
           action: handleUnlockDocument,
@@ -1060,13 +1029,14 @@ function MenuBar() {
 }
 
 function DocumentPropertiesDialog() {
+  const { t, language } = useI18n();
   const { tabs, groups, activeGroupId } = useEditorStore();
   const group = groups[activeGroupId];
   const activeTabId = group?.activeTabId;
   const tab = activeTabId ? tabs[activeTabId] : null;
   const editor = useEditorBridge.getState().editor;
   const [showProperties, setShowProperties] = useState(false);
-  const [fileSize, setFileSize] = useState("Loading...");
+  const [fileSize, setFileSize] = useState(t("properties.loading"));
 
   const getContentStats = () => {
     if (!tab) return { words: 0, chars: 0, lines: 0 };
@@ -1088,13 +1058,13 @@ function DocumentPropertiesDialog() {
   };
 
   const getFileSize = async (): Promise<string> => {
-    if (!tab?.meta.filePath) return "Unavailable (unsaved document)";
+    if (!tab?.meta.filePath) return t("properties.unavailableUnsaved");
     try {
       const { stat } = await import("@tauri-apps/plugin-fs");
       const statResult = await stat(tab.meta.filePath);
       return formatFileSize(statResult.size);
     } catch {
-      return "Unavailable";
+      return t("properties.unavailable");
     }
   };
 
@@ -1107,42 +1077,42 @@ function DocumentPropertiesDialog() {
   if (!tab) return null;
 
   const stats = getContentStats();
-  const format = tab.meta.filePath ? tab.meta.filePath.split(".").pop()?.toUpperCase() : "Unsaved";
+  const format = tab.meta.filePath ? tab.meta.filePath.split(".").pop()?.toUpperCase() : t("properties.unsaved");
 
   return (
     <Dialog open={showProperties} onOpenChange={(open) => !open && setShowProperties(false)}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Document Properties</DialogTitle>
+          <DialogTitle>{t("properties.title")}</DialogTitle>
           <DialogDescription>
-            Information about the current document
+            {t("properties.description")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <span className="text-muted-foreground">Title</span>
+            <span className="text-muted-foreground">{t("properties.infoTitle")}</span>
             <span className="font-medium truncate">{tab.meta.title}</span>
-            <span className="text-muted-foreground">File Path</span>
-            <span className="font-medium truncate">{tab.meta.filePath || "Unsaved"}</span>
-            <span className="text-muted-foreground">File Type</span>
+            <span className="text-muted-foreground">{t("properties.filePath")}</span>
+            <span className="font-medium truncate">{tab.meta.filePath || t("properties.unsaved")}</span>
+            <span className="text-muted-foreground">{t("properties.fileType")}</span>
             <span className="font-medium">{format}</span>
-            <span className="text-muted-foreground">File Size</span>
+            <span className="text-muted-foreground">{t("properties.fileSize")}</span>
             <span className="font-medium">{fileSize}</span>
-            <span className="text-muted-foreground">Words</span>
+            <span className="text-muted-foreground">{t("properties.words")}</span>
             <span className="font-medium">{stats.words}</span>
-            <span className="text-muted-foreground">Characters</span>
+            <span className="text-muted-foreground">{t("properties.characters")}</span>
             <span className="font-medium">{stats.chars}</span>
-            <span className="text-muted-foreground">Lines</span>
+            <span className="text-muted-foreground">{t("properties.lines")}</span>
             <span className="font-medium">{stats.lines}</span>
-            <span className="text-muted-foreground">Created</span>
-            <span className="font-medium">{new Date(tab.meta.createdAt).toLocaleString()}</span>
-            <span className="text-muted-foreground">Modified</span>
-            <span className="font-medium">{new Date(tab.meta.updatedAt).toLocaleString()}</span>
+            <span className="text-muted-foreground">{t("properties.created")}</span>
+            <span className="font-medium">{formatDate(language, tab.meta.createdAt)}</span>
+            <span className="text-muted-foreground">{t("properties.modified")}</span>
+            <span className="font-medium">{formatDate(language, tab.meta.updatedAt)}</span>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => setShowProperties(false)}>
-            Close
+            {t("common.close")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1151,6 +1121,7 @@ function DocumentPropertiesDialog() {
 }
 
 function ToolbarActions() {
+  const { t } = useI18n();
   const editor = useEditorBridge((s) => s.editor);
   useEditorBridge((s) => s.version);
   const openTab = useEditorStore((s) => s.openTab);
@@ -1162,14 +1133,14 @@ function ToolbarActions() {
   return (
     <>
       <div className="flex items-center gap-0.5 overflow-x-auto px-2 py-1">
-      <ToolbarButton icon={FilePlus} label="New" shortcut="Ctrl+N" onClick={() => openTab()} />
-      <ToolbarButton icon={File} label="Open" shortcut="Ctrl+O" onClick={openFile} />
-      <ToolbarButton icon={Save} label="Save" shortcut="Ctrl+S" onClick={saveFile} />
+      <ToolbarButton icon={FilePlus} label={t("menu.new")} shortcut="Ctrl+N" onClick={() => openTab()} />
+      <ToolbarButton icon={File} label={t("menu.openFile")} shortcut="Ctrl+O" onClick={openFile} />
+      <ToolbarButton icon={Save} label={t("menu.save")} shortcut="Ctrl+S" onClick={saveFile} />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
-      <ToolbarButton icon={Undo2} label="Undo" shortcut="Ctrl+Z" isActive={false} onClick={withEditor((e) => e.chain().focus().undo().run())} />
-      <ToolbarButton icon={Redo2} label="Redo" shortcut="Ctrl+Y" isActive={false} onClick={withEditor((e) => e.chain().focus().redo().run())} />
+      <ToolbarButton icon={Undo2} label={t("menu.undo")} shortcut="Ctrl+Z" isActive={false} onClick={withEditor((e) => e.chain().focus().undo().run())} />
+      <ToolbarButton icon={Redo2} label={t("menu.redo")} shortcut="Ctrl+Y" isActive={false} onClick={withEditor((e) => e.chain().focus().redo().run())} />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
-      <ToolbarButton icon={Scissors} label="Cut" shortcut="Ctrl+X" onClick={() => {
+      <ToolbarButton icon={Scissors} label={t("menu.cut")} shortcut="Ctrl+X" onClick={() => {
         const ed = useEditorBridge.getState().editor;
         if (ed) {
           const { from, to } = ed.state.selection;
@@ -1177,45 +1148,45 @@ function ToolbarActions() {
           ed.chain().focus().deleteSelection().run();
         }
       }} />
-      <ToolbarButton icon={Copy} label="Copy" shortcut="Ctrl+C" onClick={() => {
+      <ToolbarButton icon={Copy} label={t("menu.copy")} shortcut="Ctrl+C" onClick={() => {
         const ed = useEditorBridge.getState().editor;
         if (ed) {
           const { from, to } = ed.state.selection;
           navigator.clipboard.writeText(ed.state.doc.textBetween(from, to));
         }
       }} />
-      <ToolbarButton icon={Clipboard} label="Paste" shortcut="Ctrl+V" onClick={() => navigator.clipboard.readText().then(text => { const ed = useEditorBridge.getState().editor; if (ed) ed.chain().focus().insertContent(text).run(); })} />
+      <ToolbarButton icon={Clipboard} label={t("menu.paste")} shortcut="Ctrl+V" onClick={() => navigator.clipboard.readText().then(text => { const ed = useEditorBridge.getState().editor; if (ed) ed.chain().focus().insertContent(text).run(); })} />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
-      <ToolbarButton icon={Bold} label="Bold" shortcut="Ctrl+B" isActive={b("bold")} onClick={withEditor((e) => e.chain().focus().toggleBold().run())} />
-      <ToolbarButton icon={Italic} label="Italic" shortcut="Ctrl+I" isActive={b("italic")} onClick={withEditor((e) => e.chain().focus().toggleItalic().run())} />
-      <ToolbarButton icon={Underline} label="Underline" shortcut="Ctrl+U" isActive={b("underline")} onClick={withEditor((e) => e.chain().focus().toggleUnderline().run())} />
-      <ToolbarButton icon={Strikethrough} label="Strikethrough" isActive={b("strike")} onClick={withEditor((e) => e.chain().focus().toggleStrike().run())} />
-      <ToolbarButton icon={Highlighter} label="Highlight" isActive={b("highlight")} onClick={withEditor((e) => e.chain().focus().toggleHighlight().run())} />
+      <ToolbarButton icon={Bold} label={t("menu.bold")} shortcut="Ctrl+B" isActive={b("bold")} onClick={withEditor((e) => e.chain().focus().toggleBold().run())} />
+      <ToolbarButton icon={Italic} label={t("menu.italic")} shortcut="Ctrl+I" isActive={b("italic")} onClick={withEditor((e) => e.chain().focus().toggleItalic().run())} />
+      <ToolbarButton icon={Underline} label={t("menu.underline")} shortcut="Ctrl+U" isActive={b("underline")} onClick={withEditor((e) => e.chain().focus().toggleUnderline().run())} />
+      <ToolbarButton icon={Strikethrough} label={t("menu.strikethrough")} isActive={b("strike")} onClick={withEditor((e) => e.chain().focus().toggleStrike().run())} />
+      <ToolbarButton icon={Highlighter} label={t("toolbar.highlight")} isActive={b("highlight")} onClick={withEditor((e) => e.chain().focus().toggleHighlight().run())} />
       <TextColorButton />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <FontSelector />
       <FontSizeSelector />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
-      <ToolbarButton icon={AlignLeft} label="Align Left" isActive={b("textAlign", { textAlign: "left" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("left").run())} />
-      <ToolbarButton icon={AlignCenter} label="Align Center" isActive={b("textAlign", { textAlign: "center" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("center").run())} />
-      <ToolbarButton icon={AlignRight} label="Align Right" isActive={b("textAlign", { textAlign: "right" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("right").run())} />
-      <ToolbarButton icon={AlignJustify} label="Justify" isActive={b("textAlign", { textAlign: "justify" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("justify").run())} />
-      <ToolbarButton icon={Indent} label="Indent" onClick={withEditor((e) => e.chain().focus().sinkListItem("listItem").run())} />
-      <ToolbarButton icon={Outdent} label="Outdent" onClick={withEditor((e) => e.chain().focus().liftListItem("listItem").run())} />
+      <ToolbarButton icon={AlignLeft} label={t("toolbar.alignLeft")} isActive={b("textAlign", { textAlign: "left" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("left").run())} />
+      <ToolbarButton icon={AlignCenter} label={t("toolbar.alignCenter")} isActive={b("textAlign", { textAlign: "center" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("center").run())} />
+      <ToolbarButton icon={AlignRight} label={t("toolbar.alignRight")} isActive={b("textAlign", { textAlign: "right" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("right").run())} />
+      <ToolbarButton icon={AlignJustify} label={t("toolbar.alignJustify")} isActive={b("textAlign", { textAlign: "justify" })} onClick={withEditor((e) => e.chain().focus().setTextAlign("justify").run())} />
+      <ToolbarButton icon={Indent} label={t("toolbar.indent")} onClick={withEditor((e) => e.chain().focus().sinkListItem("listItem").run())} />
+      <ToolbarButton icon={Outdent} label={t("toolbar.outdent")} onClick={withEditor((e) => e.chain().focus().liftListItem("listItem").run())} />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
-      <ToolbarButton icon={List} label="Bullet List" isActive={b("bulletList")} onClick={withEditor((e) => e.chain().focus().toggleBulletList().run())} />
-      <ToolbarButton icon={ListOrdered} label="Number List" isActive={b("orderedList")} onClick={withEditor((e) => e.chain().focus().toggleOrderedList().run())} />
-      <ToolbarButton icon={ListChecks} label="Task List" isActive={b("taskList")} onClick={withEditor((e) => e.chain().focus().toggleTaskList().run())} />
+      <ToolbarButton icon={List} label={t("toolbar.bulletList")} isActive={b("bulletList")} onClick={withEditor((e) => e.chain().focus().toggleBulletList().run())} />
+      <ToolbarButton icon={ListOrdered} label={t("toolbar.numberList")} isActive={b("orderedList")} onClick={withEditor((e) => e.chain().focus().toggleOrderedList().run())} />
+      <ToolbarButton icon={ListChecks} label={t("toolbar.taskList")} isActive={b("taskList")} onClick={withEditor((e) => e.chain().focus().toggleTaskList().run())} />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
       <TableMenu />
       <EmojiPicker />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
-      <ToolbarButton icon={Search} label="Search" shortcut="Ctrl+F" onClick={() => toggleSearch(true)} />
-      <ToolbarButton icon={Replace} label="Replace" shortcut="Ctrl+H" onClick={() => toggleSearch(true)} />
+      <ToolbarButton icon={Search} label={t("menu.search")} shortcut="Ctrl+F" onClick={() => toggleSearch(true)} />
+      <ToolbarButton icon={Replace} label={t("menu.replace")} shortcut="Ctrl+H" onClick={() => toggleSearch(true)} />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
-      <ToolbarButton icon={BookmarkPlus} label="Add Bookmark" shortcut="Ctrl+Shift+K" onClick={addBookmarkAtCursor} />
+      <ToolbarButton icon={BookmarkPlus} label={t("toolbar.addBookmark")} shortcut="Ctrl+Shift+K" onClick={addBookmarkAtCursor} />
       <Separator orientation="vertical" className="mx-1.5 h-5 rounded-full bg-border/60" />
-      <ToolbarButton icon={Camera} label="Capture Screenshot" onClick={() => setScreenshotOpen(true)} />
+      <ToolbarButton icon={Camera} label={t("toolbar.captureScreenshot")} onClick={() => setScreenshotOpen(true)} />
       </div>
       <ScreenshotDialog open={screenshotOpen} onOpenChange={setScreenshotOpen} />
     </>
@@ -1228,7 +1199,7 @@ export function Toolbar() {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
-      className="flex flex-col border-b border-border/80 bg-card/50"
+      className="flex flex-col border-b border-border/80 bg-toolbar"
     >
       <MenuBar />
       <div className="border-t border-border/40">

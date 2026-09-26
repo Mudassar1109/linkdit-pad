@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Home, Clock, Bookmark, Search, Trash2,
   Command, Settings, Info, ChevronLeft, ChevronRight,
@@ -10,7 +10,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Separator } from "@/components/ui/separator";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useCommandPaletteStore } from "@/store/useCommandPaletteStore";
-import { useToastStore } from "@/store/useToastStore";
+import { useAboutStore } from "@/store/useAboutStore";
+import { useI18n } from "@/store/useI18nStore";
 import { RecentDocuments } from "@/components/documents/RecentDocuments";
 import { BookmarksPanel } from "@/components/bookmarks/BookmarksPanel";
 import { SearchPanel } from "@/components/search/SearchPanel";
@@ -18,47 +19,47 @@ import { TrashPanel } from "@/components/trash/TrashPanel";
 
 interface SidebarNavItem {
   id: string;
-  label: string;
+  labelKey: string;
   icon: React.ElementType;
   view?: string;
   action?: () => void;
-  tooltip?: string;
+  tooltipKey?: string;
 }
 
 const DOC_NAV: SidebarNavItem[] = [
-  { id: "home", label: "Home", icon: Home, view: "recent" },
-  { id: "recent", label: "Recent", icon: Clock, view: "history" },
-  { id: "bookmarks", label: "Bookmarks", icon: Bookmark, view: "bookmarks" },
-  { id: "search", label: "Search", icon: Search, view: "search" },
-  { id: "trash", label: "Trash", icon: Trash2, view: "trash" },
+  { id: "home", labelKey: "sidebar.home", icon: Home, view: "recent" },
+  { id: "recent", labelKey: "sidebar.recent", icon: Clock, view: "history" },
+  { id: "bookmarks", labelKey: "sidebar.bookmarks", icon: Bookmark, view: "bookmarks" },
+  { id: "search", labelKey: "sidebar.search", icon: Search, view: "search" },
+  { id: "trash", labelKey: "sidebar.trash", icon: Trash2, view: "trash" },
 ];
 
 const SYS_NAV: SidebarNavItem[] = [
   {
     id: "tools",
-    label: "Tools",
+    labelKey: "sidebar.tools",
     icon: Command,
     action: () => useCommandPaletteStore.getState().toggle(),
-    tooltip: "Command Palette (Ctrl+Shift+P)",
+    tooltipKey: "sidebar.commandPaletteTooltip",
   },
   {
     id: "settings",
-    label: "Settings",
+    labelKey: "sidebar.settings",
     icon: Settings,
     action: () => useSettingsStore.getState().toggle(),
-    tooltip: "Settings",
   },
   {
     id: "about",
-    label: "About",
+    labelKey: "sidebar.about",
     icon: Info,
-    action: () => useToastStore.getState().show("info", "LinkDit Pad v0.1.2  \u2022  Write \u2022 Organize \u2022 Create Better"),
-    tooltip: "About",
+    action: () => useAboutStore.getState().open(),
   },
 ];
 
 const MIN_WIDTH = 430;
 const MAX_WIDTH = 640;
+const LEFT_NAV_WIDTH = 176; // w-44
+const RAIL_WIDTH = 48; // w-12
 
 function NavItemButton({
   item,
@@ -72,12 +73,15 @@ function NavItemButton({
   collapsed: boolean;
 }) {
   const Icon = item.icon;
+  const { t } = useI18n();
+  const label = t(item.labelKey);
+  const tooltip = item.tooltipKey ? t(item.tooltipKey) : label;
   if (collapsed) {
     return (
       <Tooltip key={item.id}>
         <TooltipTrigger asChild>
           <button
-            aria-label={item.label}
+            aria-label={label}
             onClick={onSelect}
             data-active={isActive}
             className={cn(
@@ -90,7 +94,7 @@ function NavItemButton({
             <Icon size={16} />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right">{item.tooltip ?? item.label}</TooltipContent>
+        <TooltipContent side="right">{tooltip}</TooltipContent>
       </Tooltip>
     );
   }
@@ -117,20 +121,22 @@ function NavItemButton({
               isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground"
             )}
           />
-          <span className="truncate">{item.label}</span>
+          <span className="truncate">{label}</span>
           {isActive && (
             <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-glow-sm" aria-hidden />
           )}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="right">{item.tooltip ?? item.label}</TooltipContent>
+      <TooltipContent side="right">{tooltip}</TooltipContent>
     </Tooltip>
   );
 }
 
 export function Sidebar() {
+  const { t } = useI18n();
   const [activeView, setActiveView] = useState("recent");
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
   const [width, setWidth] = useState(
     Math.max(MIN_WIDTH, useSettingsStore.getState().appearance.sidebarWidth)
   );
@@ -211,77 +217,110 @@ export function Sidebar() {
     }
   };
 
-  const activeLabel = DOC_NAV.find((n) => n.view === activeView)?.label ?? "Documents";
+  const activeLabel = DOC_NAV.find((n) => n.view === activeView)?.labelKey
+    ? t(DOC_NAV.find((n) => n.view === activeView)?.labelKey ?? "sidebar.documents")
+    : t("sidebar.documents");
+
+  const asideWidth = rightCollapsed
+    ? (leftCollapsed ? RAIL_WIDTH : LEFT_NAV_WIDTH) + RAIL_WIDTH
+    : width;
 
   return (
-    <AnimatePresence>
-      {!isCollapsed ? (
-        <motion.aside
-          initial={{ width, opacity: 1 }}
-          exit={{ width: 0, opacity: 0, overflow: "hidden" }}
-          animate={{ width }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
-          className="flex h-full shrink-0 border-r border-border bg-card/40"
-        >
-          <nav className="flex w-44 flex-col border-r border-border shrink-0 bg-muted/20">
-            {navRender(false)}
-          </nav>
-
-          <div className="flex flex-1 flex-col min-w-0">
-            <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {activeLabel}
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Collapse sidebar"
-                    className="h-6 w-6"
-                    onClick={() => setIsCollapsed(true)}
-                  >
-                    <ChevronLeft size={13} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Collapse Sidebar</TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="flex-1 min-h-0">{renderActiveView()}</div>
-          </div>
-
-          <div
-            className="w-[3px] cursor-col-resize bg-transparent hover:bg-primary/40 active:bg-primary/60 transition-colors shrink-0"
-            onMouseDown={startResize}
-          />
-        </motion.aside>
-      ) : (
-        <motion.div
-          initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 48, opacity: 1 }}
-          exit={{ width: 0, opacity: 0 }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
-          className="flex h-full shrink-0 flex-col items-center gap-0.5 border-r border-border py-2 bg-card/40"
-        >
-          {navRender(true)}
-          <div className="mt-auto">
+    <motion.aside
+      initial={{ width: asideWidth, opacity: 1 }}
+      animate={{ width: asideWidth }}
+      transition={{ duration: 0.2, ease: "easeInOut" }}
+      className="flex h-full min-h-0 shrink-0 overflow-hidden border-r border-border bg-sidebar"
+    >
+      {!leftCollapsed ? (
+        <nav className="flex w-44 shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar">
+          <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-2.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("sidebar.navigation")}
+            </span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="Expand sidebar"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => setIsCollapsed(false)}
+                  aria-label={t("sidebar.collapseLeft")}
+                  className="h-6 w-6"
+                  onClick={() => setLeftCollapsed(true)}
                 >
-                  <ChevronRight size={14} />
+                  <ChevronLeft size={13} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Expand Sidebar</TooltipContent>
+              <TooltipContent side="bottom">{t("sidebar.collapseLeftTooltip")}</TooltipContent>
             </Tooltip>
           </div>
-        </motion.div>
+          {navRender(false)}
+        </nav>
+      ) : (
+        <nav className="flex w-12 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-border bg-sidebar py-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("sidebar.expandLeft")}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => setLeftCollapsed(false)}
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{t("sidebar.expandLeftTooltip")}</TooltipContent>
+          </Tooltip>
+          {navRender(true)}
+        </nav>
       )}
-    </AnimatePresence>
+
+      {rightCollapsed ? (
+        <div className="flex w-12 shrink-0 flex-col items-center gap-2 border-r border-border bg-sidebar py-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("sidebar.expandPanel")}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => setRightCollapsed(false)}
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t("sidebar.expandPanelTooltip")}</TooltipContent>
+          </Tooltip>
+        </div>
+      ) : (
+        <div className="flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden">
+          <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {activeLabel}
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("sidebar.collapsePanel")}
+                  className="h-6 w-6"
+                  onClick={() => setRightCollapsed(true)}
+                >
+                  <ChevronLeft size={13} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{t("sidebar.collapsePanelTooltip")}</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="flex-1 min-h-0">{renderActiveView()}</div>
+        </div>
+      )}
+
+      <div
+        className="w-[3px] cursor-col-resize bg-transparent hover:bg-primary/40 active:bg-primary/60 transition-colors shrink-0"
+        onMouseDown={startResize}
+      />
+    </motion.aside>
   );
 }

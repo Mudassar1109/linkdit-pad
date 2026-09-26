@@ -3,17 +3,19 @@ import { useActiveTab, useEditorStore } from "@/store/useEditorStore";
 import { useEditorBridge } from "@/store/useEditorBridge";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
+import { useI18n } from "@/store/useI18nStore";
 import { cn } from "@/lib/utils";
 import type { EditorMode } from "@/types/editor";
 
-const MODES: { id: EditorMode; label: string }[] = [
-  { id: "plain", label: "Plain Text" },
-  { id: "rich", label: "Rich Text" },
-  { id: "markdown", label: "Markdown" },
-  { id: "code", label: "Code" },
+const MODES: { id: EditorMode; labelKey: string }[] = [
+  { id: "plain", labelKey: "status.modes.plain" },
+  { id: "rich", labelKey: "status.modes.rich" },
+  { id: "markdown", labelKey: "status.modes.markdown" },
+  { id: "code", labelKey: "status.modes.code" },
 ];
 
 export function StatusBar() {
+  const { t } = useI18n();
   const activeTab = useActiveTab();
   const setMode = useEditorStore((s) => s.setMode);
   const showStatusBar = useSettingsStore((s) => s.appearance.showStatusBar);
@@ -58,18 +60,18 @@ export function StatusBar() {
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.2 }}
-      className="flex h-8 items-center justify-between border-t border-border/80 bg-card/60 px-3 text-[11px] text-muted-foreground shrink-0"
+      className="flex h-8 items-center justify-between border-t border-border/80 bg-toolbar px-3 text-[11px] text-muted-foreground shrink-0"
     >
       <div className="flex items-center gap-3">
         <span className="tabular-nums hover:text-foreground cursor-default transition-colors">
-          Ln {currentLine}, Col {Math.max(0, currentCol)}
+          {t("status.lnCol", { line: currentLine, col: Math.max(0, currentCol) })}
         </span>
         <span className="w-px h-3.5 bg-border/60" />
-        <span className="tabular-nums">{wordCount} words</span>
+        <span className="tabular-nums">{t("status.words", { count: wordCount })}</span>
         <span className="w-px h-3.5 bg-border/60" />
-        <span className="tabular-nums">{charCount} chars</span>
+        <span className="tabular-nums">{t("status.chars", { count: charCount })}</span>
         <span className="w-px h-3.5 bg-border/60" />
-        <span className="tabular-nums">{lineCount} lines</span>
+        <span className="tabular-nums">{t("status.lines", { count: lineCount })}</span>
       </div>
 
       <div className="flex items-center gap-3">
@@ -86,10 +88,10 @@ export function StatusBar() {
           )}
           title={
             autosaveStatus === "error" && autosaveError
-              ? `Auto-save failed: ${autosaveError}`
+              ? t("status.autoSaveFailedHelp", { error: autosaveError })
               : autoSaveEnabled
-                ? "Auto Save writes the current document to its file on disk"
-                : "Auto Save is disabled"
+                ? t("status.autoSaveHelp")
+                : t("status.autoSaveDisabledHelp")
           }
         >
           {autoSaveEnabled ? (
@@ -105,30 +107,30 @@ export function StatusBar() {
                 )}
               />
               {autosaveStatus === "saving"
-                ? "Saving…"
+                ? t("status.saving")
                 : autosaveStatus === "saved"
-                  ? "Saved"
+                  ? t("status.saved")
                   : autosaveStatus === "error"
-                    ? "Auto-save failed"
-                    : "Auto Save"}
+                    ? t("status.autoSaveFailed")
+                    : t("status.autoSave")}
             </>
           ) : (
             <>
               <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
-              Auto Save off
+              {t("status.autoSaveOff")}
             </>
           )}
         </span>
         {activeTab?.meta.isDirty && (
           <span className="flex items-center gap-1 text-warning">
             <span className="h-1.5 w-1.5 rounded-full bg-warning animate-autosave-pulse" />
-            Unsaved
+            {t("common.unsaved")}
           </span>
         )}
         {activeTab?.meta.filePath && !activeTab.meta.isDirty && (
           <span className="flex items-center gap-1 text-success">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            Saved
+            {t("common.saved")}
           </span>
         )}
         <span className="w-px h-3.5 bg-border/60" />
@@ -143,7 +145,7 @@ export function StatusBar() {
             className="rounded-md bg-transparent px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
           >
             {MODES.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
+              <option key={m.id} value={m.id}>{t(m.labelKey)}</option>
             ))}
           </select>
         )}

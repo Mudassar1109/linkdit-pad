@@ -4,8 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useLockStore } from "@/store/useLockStore";
 import { getFocusedPaneTabId, useEditorStore } from "@/store/useEditorStore";
 import { useToastStore } from "@/store/useToastStore";
+import { useI18n } from "@/store/useI18nStore";
 
 export function LockPasswordDialog() {
+  const { t } = useI18n();
   const dialog = useLockStore((s) => s.dialog);
   const closeDialog = useLockStore((s) => s.closeDialog);
   const lock = useLockStore((s) => s.lock);
@@ -40,42 +42,42 @@ export function LockPasswordDialog() {
     try {
       if (isUnlock) {
         if (!password) {
-          setError("Enter the password to unlock this document.");
+          setError(t("dialogs.lock.unlockDescription"));
           setBusy(false);
           return;
         }
         const result = await unlock(targetId, password);
         if (result === "ok") {
-          useToastStore.getState().show("success", "Document unlocked. You can edit it now.");
+          useToastStore.getState().show("success", t("dialogs.lock.toastUnlocked"));
           close();
         } else if (result === "incorrect") {
-          setError("Incorrect password. Please try again.");
+          setError(t("dialogs.lock.incorrectPassword"));
         } else {
-          useToastStore.getState().show("info", "This document is not password protected.");
+          useToastStore.getState().show("info", t("toast.notPasswordProtected"));
           close();
         }
       } else {
         if (!password) {
-          setError("Enter a password to lock this document.");
+          setError(t("dialogs.lock.promptText"));
           setBusy(false);
           return;
         }
         if (password !== confirm) {
-          setError("Passwords do not match.");
+          setError(t("dialogs.lock.passwordsDontMatch"));
           setBusy(false);
           return;
         }
         if (password.length < 4) {
-          setError("Password must be at least 4 characters.");
+          setError(t("dialogs.lock.passwordTooShort"));
           setBusy(false);
           return;
         }
-        const ok = await lock(targetId, tab?.meta.title ?? "Untitled", password);
+        const ok = await lock(targetId, tab?.meta.title ?? t("common.untitled"), password);
         if (ok) {
-          useToastStore.getState().show("success", "Document locked. Editing is disabled until unlocked.");
+          useToastStore.getState().show("success", t("dialogs.lock.toastLocked"));
           close();
         } else {
-          setError("Could not lock the document.");
+          setError(t("dialogs.lock.lockError"));
         }
       }
     } finally {
@@ -83,27 +85,25 @@ export function LockPasswordDialog() {
     }
   };
 
-  const title = tab?.meta.title ?? "Document";
-
   return (
     <Dialog open onOpenChange={(o) => !o && close()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isUnlock ? <LockKeyholeOpen size={18} /> : <Lock size={18} />}
-            {isUnlock ? `Unlock "${title}"` : `Lock "${title}"`}
+            {isUnlock ? t("dialogs.lock.unlockTitle") : t("dialogs.lock.lockTitle")}
           </DialogTitle>
           <DialogDescription>
             {isUnlock
-              ? "Enter the password to unlock this document for editing."
-              : "Set a password. The document becomes read-only until unlocked. The password is stored as a secure local hash only."}
+              ? t("dialogs.lock.unlockDescription")
+              : t("dialogs.lock.description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div>
             <label htmlFor="lock-password" className="mb-1 block text-xs font-medium text-muted-foreground">
-              Password
+              {t("dialogs.lock.password")}
             </label>
             <input
               id="lock-password"
@@ -118,7 +118,7 @@ export function LockPasswordDialog() {
           {!isUnlock && (
             <div>
               <label htmlFor="lock-confirm" className="mb-1 block text-xs font-medium text-muted-foreground">
-                Confirm Password
+                {t("dialogs.lock.confirmPassword")}
               </label>
               <input
                 id="lock-confirm"
@@ -138,7 +138,7 @@ export function LockPasswordDialog() {
             onClick={close}
             className="h-8 rounded-md border border-border bg-transparent px-3 text-sm text-foreground hover:bg-muted transition-colors"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleSubmit}
@@ -146,7 +146,7 @@ export function LockPasswordDialog() {
             className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {isUnlock ? <LockKeyholeOpen size={14} /> : <Lock size={14} />}
-            {isUnlock ? "Unlock" : "Lock Document"}
+            {isUnlock ? t("dialogs.lock.unlock") : t("dialogs.lock.lock")}
           </button>
         </div>
       </DialogContent>

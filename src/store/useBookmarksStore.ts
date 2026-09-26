@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { generateId } from "@/lib/utils";
+import { useI18nStore } from "@/store/useI18nStore";
 import type { Bookmark } from "@/types/bookmarks";
 import { adjustPlainBookmarks, plainLineCols } from "@/lib/bookmarkPositions";
 
@@ -74,7 +75,7 @@ export const useBookmarksStore = create<BookmarksState>((set, get) => ({
     const list = s.bookmarks[fileId] ?? [];
     const bookmark: Bookmark = {
       id: generateId(),
-      name: name?.trim() || `Bookmark ${list.length + 1}`,
+      name: name?.trim() || useI18nStore.getState().t("panels.bookmarks.defaultName", { count: list.length + 1 }),
       fileId,
       position,
       lineNumber,

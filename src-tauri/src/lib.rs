@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod error;
+mod print;
 
 use error::AppError;
 use tauri::{Emitter, Manager};
@@ -48,6 +49,9 @@ pub fn run() {
             commands::list_recent_files,
             commands::app_version,
             commands::take_pending_open_path,
+            print::list_printers,
+            print::printer_capabilities,
+            print::open_printer_properties,
         ])
         .run(tauri::generate_context!())
         .expect("error while running LinkDit Pad");

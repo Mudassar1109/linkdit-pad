@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useBookmarksStore } from "@/store/useBookmarksStore";
+import { useI18n } from "@/store/useI18nStore";
 import { registerPlainTarget, updatePlainActive } from "@/lib/bookmarks";
 import type { TextDirection } from "@/types/editor";
 
@@ -16,6 +17,7 @@ interface PlainTextEditorProps {
 }
 
 export function PlainTextEditor({ content, direction, onChange, fileId, editable = true }: PlainTextEditorProps) {
+  const { t } = useI18n();
   const ref = useRef<HTMLTextAreaElement>(null);
   const lastContentRef = useRef(content);
   const { fontSize, fontFamily, lineHeight, letterSpacing, spellCheck } = useSettingsStore((s) => s.editor);
@@ -62,7 +64,7 @@ export function PlainTextEditor({ content, direction, onChange, fileId, editable
       onClick={updateActive}
       onKeyUp={updateActive}
       onFocus={updateActive}
-      placeholder="Start writing…"
+      placeholder={t("editor.placeholders.startWriting")}
       style={{
         fontSize: `${fontSize}px`,
         fontFamily,

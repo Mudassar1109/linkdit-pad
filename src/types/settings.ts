@@ -8,6 +8,7 @@ export interface ShortcutConfig {
   alt?: boolean;
   command: string;
   label: string;
+  labelKey?: string;
 }
 
 export interface EditorSettings {

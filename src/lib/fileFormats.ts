@@ -1,5 +1,6 @@
 import { htmlToMarkdown } from "@/lib/htmlToMd";
 import { htmlToRtf } from "@/lib/htmlToRtf";
+import { useI18nStore } from "@/store/useI18nStore";
 
 export type DocumentFormat = "ldp" | "html" | "txt" | "md" | "rtf";
 
@@ -80,23 +81,25 @@ export function getFormatExtension(format: DocumentFormat): string {
 }
 
 export function getSaveFilters() {
+  const t = useI18nStore.getState().t;
   return [
-    { name: "LinkDit Pad Document (*.ldp)", extensions: ["ldp"] },
-    { name: "HTML (*.html)", extensions: ["html"] },
-    { name: "Markdown (*.md)", extensions: ["md"] },
-    { name: "Plain Text (*.txt)", extensions: ["txt"] },
-    { name: "Rich Text (*.rtf)", extensions: ["rtf"] },
+    { name: t("menu.saveLdp"), extensions: ["ldp"] },
+    { name: t("menu.saveHtml"), extensions: ["html"] },
+    { name: t("menu.importMarkdown"), extensions: ["md"] },
+    { name: t("menu.importPlainText"), extensions: ["txt"] },
+    { name: t("menu.saveRtf"), extensions: ["rtf"] },
   ];
 }
 
 export function getOpenFilters() {
+  const t = useI18nStore.getState().t;
   return [
-    { name: "All Supported Formats", extensions: ["ldp", "html", "htm", "md", "txt", "rtf"] },
-    { name: "LinkDit Pad Document (*.ldp)", extensions: ["ldp"] },
-    { name: "HTML (*.html)", extensions: ["html", "htm"] },
-    { name: "Markdown (*.md)", extensions: ["md"] },
-    { name: "Plain Text (*.txt)", extensions: ["txt"] },
-    { name: "Rich Text (*.rtf)", extensions: ["rtf"] },
+    { name: t("menu.allSupported"), extensions: ["ldp", "html", "htm", "md", "txt", "rtf"] },
+    { name: t("menu.saveLdp"), extensions: ["ldp"] },
+    { name: t("menu.saveHtml"), extensions: ["html", "htm"] },
+    { name: t("menu.importMarkdown"), extensions: ["md"] },
+    { name: t("menu.importPlainText"), extensions: ["txt"] },
+    { name: t("menu.saveRtf"), extensions: ["rtf"] },
   ];
 }
 

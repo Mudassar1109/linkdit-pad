@@ -5,6 +5,7 @@ import { useVersionHistoryStore, type VersionEntry } from "@/store/useVersionHis
 import { useLockStore } from "@/store/useLockStore";
 import { getFocusedPaneTabId, useEditorStore } from "@/store/useEditorStore";
 import { useToastStore } from "@/store/useToastStore";
+import { useI18n } from "@/store/useI18nStore";
 
 function formatTime(iso: string): string {
   try {
@@ -21,6 +22,7 @@ function formatTime(iso: string): string {
 }
 
 export function VersionHistoryDialog() {
+  const { t } = useI18n();
   const isOpen = useVersionHistoryStore((s) => s.isOpen);
   const close = useVersionHistoryStore((s) => s.close);
   const versions = useVersionHistoryStore((s) => s.versions);
@@ -45,19 +47,16 @@ export function VersionHistoryDialog() {
     if (!targetId || locked) return;
     const ok = restoreVersion(targetId, v.id);
     if (ok) {
-      useToastStore.getState().show(
-        "success",
-        `Restored version from ${formatTime(v.createdAt)}. Current content was saved as the latest version.`
-      );
+      useToastStore.getState().show("success", t("dialogs.version.restored"));
     } else {
-      useToastStore.getState().show("error", "Could not restore this version.");
+      useToastStore.getState().show("error", t("dialogs.version.restoreError"));
     }
   };
 
   const handleDelete = (v: VersionEntry) => {
     if (!targetId) return;
     deleteVersion(targetId, v.id);
-    useToastStore.getState().show("info", "Version deleted.");
+    useToastStore.getState().show("info", t("dialogs.version.deleted"));
     if (previewVersion?.id === v.id) setPreviewVersion(null);
   };
 
@@ -68,7 +67,7 @@ export function VersionHistoryDialog() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <History size={18} />
-              Version History
+              {t("dialogs.version.title")}
               {tab ? (
                 <span className="ml-1 truncate text-sm font-normal text-muted-foreground">
                   &mdash; {tab.meta.title}
@@ -76,18 +75,18 @@ export function VersionHistoryDialog() {
               ) : null}
             </DialogTitle>
             <DialogDescription>
-              Auto-saved snapshots of this document. Stored locally only.
+              {t("dialogs.version.description")}
             </DialogDescription>
           </DialogHeader>
 
           {!targetId ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No document open.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("editor.empty.noDocumentOpen")}</p>
           ) : sorted.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">
               <History size={32} strokeWidth={1.5} />
-              <p className="text-sm">No versions yet.</p>
+              <p className="text-sm">{t("dialogs.version.empty")}</p>
               <p className="text-xs text-muted-foreground/70">
-                Versions appear automatically as you make meaningful changes.
+                {t("dialogs.version.hint")}
               </p>
             </div>
           ) : (
@@ -99,19 +98,21 @@ export function VersionHistoryDialog() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-foreground">v{sorted.length - idx}</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {t("dialogs.version.shortLabel", { count: sorted.length - idx })}
+                      </span>
                       <span className="truncate text-xs text-muted-foreground">{formatTime(v.createdAt)}</span>
                     </div>
                     <div className="mt-0.5 text-[11px] text-muted-foreground/80">
-                      {v.title} &middot; {v.charCount.toLocaleString()} chars
-                      {v.source === "pre-restore" ? " &middot; saved before restore" : ""}
+                      {v.title} &middot; {t("status.chars", { count: v.charCount })}
+                      {v.source === "pre-restore" ? t("dialogs.version.beforeRestore") : ""}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       onClick={() => setPreviewVersion(v)}
-                      title={`Preview version from ${formatTime(v.createdAt)}`}
-                      aria-label="Preview version"
+                      title={t("dialogs.version.previewTitle", { time: formatTime(v.createdAt) })}
+                      aria-label={t("dialogs.version.previewAlt")}
                       className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
                       <Eye size={14} />
@@ -119,16 +120,16 @@ export function VersionHistoryDialog() {
                     <button
                       onClick={() => handleRestore(v)}
                       disabled={locked}
-                      title={locked ? "Unlock the document to restore a version" : "Restore this version"}
-                      aria-label="Restore version"
+                      title={locked ? t("dialogs.version.restoreLockedTooltip") : t("common.restore")}
+                      aria-label={t("common.restore")}
                       className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
                     >
                       <RotateCcw size={14} />
                     </button>
                     <button
                       onClick={() => handleDelete(v)}
-                      title="Delete version"
-                      aria-label="Delete version"
+                      title={t("common.delete")}
+                      aria-label={t("common.delete")}
                       className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-danger"
                     >
                       <Trash2 size={14} />
@@ -142,7 +143,7 @@ export function VersionHistoryDialog() {
           {locked && (
             <div className="mt-2 flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
               <AlertTriangle size={14} className="shrink-0" />
-              This document is locked. Unlock it (Document &rarr; Unlock Document) before restoring a version.
+              {t("dialogs.version.lockedBanner")}
             </div>
           )}
         </DialogContent>
@@ -154,7 +155,7 @@ export function VersionHistoryDialog() {
             <DialogTitle className="flex items-center justify-between pr-8">
               <span className="flex items-center gap-2">
                 <Eye size={16} />
-                Preview Version
+                {t("dialogs.version.preview")}
               </span>
             </DialogTitle>
             {previewVersion && (
@@ -183,7 +184,7 @@ export function VersionHistoryDialog() {
               className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-transparent px-3 text-sm text-foreground hover:bg-muted transition-colors"
             >
               <X size={14} />
-              Close
+              {t("common.close")}
             </button>
             {previewVersion && (
               <button
@@ -195,7 +196,7 @@ export function VersionHistoryDialog() {
                 className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 <RotateCcw size={14} />
-                Restore This Version
+                {t("common.restore")}
               </button>
             )}
           </div>

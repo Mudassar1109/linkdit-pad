@@ -1,7 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirmStore } from "@/store/useConfirmStore";
+import { useI18n } from "@/store/useI18nStore";
 
 export function ConfirmDialog() {
+  const { t } = useI18n();
   const { isOpen, message, resolve, close } = useConfirmStore();
 
   const handleAction = (action: "save" | "discard" | "cancel") => {
@@ -28,11 +30,11 @@ export function ConfirmDialog() {
               transition={{ duration: 0.15 }}
               role="dialog"
               aria-modal="true"
-              aria-label="Unsaved changes"
+              aria-label={t("dialogs.confirm.title")}
               className="pointer-events-auto w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-panel"
             >
               <h2 className="text-base font-semibold text-foreground mb-2">
-                Unsaved Changes
+                {t("dialogs.confirm.title")}
               </h2>
               <p className="text-sm text-muted-foreground mb-6">
                 {message}
@@ -42,19 +44,19 @@ export function ConfirmDialog() {
                   onClick={() => handleAction("cancel")}
                   className="h-8 rounded-md border border-border bg-transparent px-3 text-sm text-foreground hover:bg-muted transition-colors"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   onClick={() => handleAction("discard")}
                   className="h-8 rounded-md border border-border bg-transparent px-3 text-sm text-foreground hover:bg-muted transition-colors"
                 >
-                  Don't Save
+                  {t("common.dontSave")}
                 </button>
                 <button
                   onClick={() => handleAction("save")}
                   className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90 transition-opacity"
                 >
-                  Save
+                  {t("common.save")}
                 </button>
               </div>
             </motion.div>

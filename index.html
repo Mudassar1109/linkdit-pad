@@ -7,10 +7,20 @@
     <meta name="description" content="The next generation Windows writing application." />
     <script>
       (function() {
-        var stored = null;
-        try { stored = localStorage.getItem('linkdit-pad-theme-mode'); } catch(e) {}
-        if (stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
+        try {
+          var mode = localStorage.getItem('linkdit-pad-theme-mode');
+          var theme = localStorage.getItem('linkdit-pad-theme');
+          var accent = localStorage.getItem('linkdit-pad-accent');
+          var dark = mode === 'dark' || (mode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          root.classList.toggle('dark', dark);
+          root.setAttribute('data-theme', theme || 'arctic');
+          root.setAttribute('data-accent', accent || 'blue');
+        } catch(e) {
+          var r = document.documentElement;
+          if (window.matchMedia('(prefers-color-scheme: dark)').matches) { r.classList.add('dark'); }
+          r.setAttribute('data-theme', 'arctic');
+          r.setAttribute('data-accent', 'blue');
         }
       })();
     </script>

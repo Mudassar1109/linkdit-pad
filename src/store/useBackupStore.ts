@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { generateId } from "@/lib/utils";
 import { useEditorStore } from "@/store/useEditorStore";
 import { useToastStore } from "@/store/useToastStore";
+import { useI18nStore } from "@/store/useI18nStore";
 import type { EditorTab } from "@/types/editor";
 
 export interface BackupSettings {
@@ -172,7 +173,7 @@ export const useBackupStore = create<BackupState>((set, get) => ({
     void writeDiskBackup(nextBackups, get().settings);
 
     if (created > 0) {
-      useToastStore.getState().show("success", `Backup saved (${created} document${created > 1 ? "s" : ""})`);
+      useToastStore.getState().show("success", useI18nStore.getState().t("settings.backup.savedToast", { count: created }));
     }
   },
 
@@ -184,11 +185,11 @@ export const useBackupStore = create<BackupState>((set, get) => ({
     const { tabs, openTab, renameTab, updateContent } = useEditorStore.getState();
     if (tabs[entry.tabId]) {
       updateContent(entry.tabId, entry.content);
-      useToastStore.getState().show("success", `Recovered backup of "${entry.title}"`);
+      useToastStore.getState().show("success", useI18nStore.getState().t("settings.backup.restored"));
     } else {
       const tabId = openTab({ content: entry.content, mode: entry.mode as EditorTab["mode"] });
       renameTab(tabId, entry.title);
-      useToastStore.getState().show("success", `Recovered "${entry.title}" as a new tab`);
+      useToastStore.getState().show("success", useI18nStore.getState().t("settings.backup.restored"));
     }
   },
 

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToastStore } from "@/store/useToastStore";
+import { useI18n } from "@/store/useI18nStore";
 import {
   captureEditorToBlob,
   copyScreenshotPng,
@@ -34,6 +35,7 @@ interface ScreenshotDialogProps {
 }
 
 export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) {
+  const { t } = useI18n();
   const toast = useToastStore((s) => s.show);
   const [mode, setMode] = useState<ScreenshotMode | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -83,11 +85,11 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
       const name = screenshotFileName(focusedScreenshotTitle());
       const saved = await saveScreenshotPng(blob, name);
       if (saved) {
-        toast("success", `Screenshot saved as ${name}`);
+        toast("success", t("dialogs.screenshot.saved"));
         onOpenChange(false);
       }
     } catch (e) {
-      toast("error", e instanceof Error ? e.message : "Could not save the screenshot.");
+      toast("error", e instanceof Error ? e.message : t("dialogs.screenshot.saveError"));
     }
   };
 
@@ -96,9 +98,9 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
     try {
       await copyScreenshotPng(blob);
       setCopied(true);
-      toast("success", "Screenshot copied to clipboard");
+      toast("success", t("dialogs.screenshot.copied"));
     } catch (e) {
-      toast("error", e instanceof Error ? e.message : "Could not copy the screenshot.");
+      toast("error", e instanceof Error ? e.message : t("dialogs.screenshot.copyError"));
     }
   };
 
@@ -108,10 +110,10 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Camera size={18} className="text-primary" />
-            Capture Screenshot
+            {t("dialogs.screenshot.title")}
           </DialogTitle>
           <DialogDescription>
-            Capture the current document area or the entire document as an image.
+            {t("dialogs.screenshot.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -122,16 +124,16 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
               className="flex-col gap-2 py-6"
               onClick={() => capture("visible")}
             >
-              <span className="text-lg font-semibold">Visible Area</span>
-              <span className="text-xs text-muted-foreground">Only what is on screen now</span>
+              <span className="text-lg font-semibold">{t("dialogs.screenshot.visibleArea")}</span>
+              <span className="text-xs text-muted-foreground">{t("dialogs.screenshot.modeVisibleCaption")}</span>
             </Button>
             <Button
               variant="outline"
               className="flex-col gap-2 py-6"
               onClick={() => capture("entire")}
             >
-              <span className="text-lg font-semibold">Entire Document</span>
-              <span className="text-xs text-muted-foreground">Full content, even if long</span>
+              <span className="text-lg font-semibold">{t("dialogs.screenshot.fullDocument")}</span>
+              <span className="text-xs text-muted-foreground">{t("dialogs.screenshot.modeFullCaption")}</span>
             </Button>
           </div>
         )}
@@ -139,9 +141,7 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
         {busy && (
           <div className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
             <Loader2 size={28} className="animate-spin text-primary" />
-            <span className="text-sm">
-              {mode === "entire" ? "Rendering entire document…" : "Capturing visible area…"}
-            </span>
+            <span className="text-sm">{t("dialogs.screenshot.capturing")}</span>
           </div>
         )}
 
@@ -157,7 +157,7 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
                 setBlob(null);
               }}
             >
-              Choose capture area
+              {t("dialogs.screenshot.chooseArea")}
             </Button>
           </div>
         )}
@@ -167,7 +167,7 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
             <div className="max-h-[55vh] overflow-auto rounded-lg border border-border bg-muted/30 p-2">
               <img
                 src={previewUrl}
-                alt="Screenshot preview"
+                alt={t("dialogs.screenshot.previewAlt")}
                 className="mx-auto h-auto max-w-full rounded"
               />
             </div>
@@ -177,10 +177,10 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
                 size="sm"
                 onClick={() => capture(mode === "visible" ? "entire" : "visible")}
               >
-                {mode === "visible" ? "Entire Document" : "Visible Area"}
+                {mode === "visible" ? t("dialogs.screenshot.fullDocument") : t("dialogs.screenshot.visibleArea")}
               </Button>
               <span className="px-2 text-xs text-muted-foreground">
-                {mode === "visible" ? "Visible Area" : "Entire Document"}
+                {mode === "visible" ? t("dialogs.screenshot.visibleArea") : t("dialogs.screenshot.fullDocument")}
               </span>
             </div>
           </>
@@ -189,21 +189,21 @@ export function ScreenshotDialog({ open, onOpenChange }: ScreenshotDialogProps) 
         {blob && (
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              <X size={14} /> Cancel
+              <X size={14} /> {t("common.cancel")}
             </Button>
             <Button variant="outline" size="sm" onClick={handleCopy} disabled={copied}>
-              {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}
+              {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? t("dialogs.screenshot.copiedLabel") : t("dialogs.screenshot.copy")}
             </Button>
             <Button
               variant="outline"
               size="sm"
               disabled
-              title="Native Windows sharing is not available in this build"
+              title={t("dialogs.screenshot.shareTooltip")}
             >
-              <Share2 size={14} /> Share
+              <Share2 size={14} /> {t("dialogs.screenshot.share")}
             </Button>
             <Button variant="default" size="sm" onClick={handleSave}>
-              <Download size={14} /> Save Image
+              <Download size={14} /> {t("dialogs.screenshot.save")}
             </Button>
           </DialogFooter>
         )}

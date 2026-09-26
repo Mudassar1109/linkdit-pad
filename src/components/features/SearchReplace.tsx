@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { useSearchStore } from "@/store/useSearchStore";
 import { useEditorBridge } from "@/store/useEditorBridge";
+import { useI18n } from "@/store/useI18nStore";
 
 export function SearchReplace() {
+  const { t } = useI18n();
   const {
     query, replaceText, isRegex, caseSensitive, wholeWord,
     isVisible, results, currentIndex,
@@ -121,14 +123,14 @@ export function SearchReplace() {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Find..."
+                    placeholder={t("search.findPlaceholder")}
                     className="w-full h-8 rounded-md border border-input bg-background pl-8 pr-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div className="flex items-center gap-1">
-                  <Toggle size="sm" variant="outline" pressed={caseSensitive} onPressedChange={setCaseSensitive} aria-label="Case Sensitive">Aa</Toggle>
-                  <Toggle size="sm" variant="outline" pressed={wholeWord} onPressedChange={setWholeWord} aria-label="Whole Word">W</Toggle>
-                  <Toggle size="sm" variant="outline" pressed={isRegex} onPressedChange={setIsRegex} aria-label="Regex">.*</Toggle>
+                  <Toggle size="sm" variant="outline" pressed={caseSensitive} onPressedChange={setCaseSensitive} aria-label={t("search.caseSensitive")}>Aa</Toggle>
+                  <Toggle size="sm" variant="outline" pressed={wholeWord} onPressedChange={setWholeWord} aria-label={t("search.wholeWord")}>W</Toggle>
+                  <Toggle size="sm" variant="outline" pressed={isRegex} onPressedChange={setIsRegex} aria-label={t("search.regex")}>.*</Toggle>
                 </div>
               </div>
               {showReplace && (
@@ -138,12 +140,12 @@ export function SearchReplace() {
                     <input
                       value={replaceText}
                       onChange={(e) => setReplaceText(e.target.value)}
-                      placeholder="Replace with..."
+                      placeholder={t("search.replacePlaceholder")}
                       className="w-full h-8 rounded-md border border-input bg-background pl-8 pr-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
-                  <Button variant="outline" size="sm" onClick={replaceCurrent} className="h-8">Replace</Button>
-                  <Button variant="outline" size="sm" onClick={replaceAll} className="h-8">All</Button>
+                  <Button variant="outline" size="sm" onClick={replaceCurrent} className="h-8">{t("search.replace")}</Button>
+                  <Button variant="outline" size="sm" onClick={replaceAll} className="h-8">{t("search.replaceAll")}</Button>
                 </div>
               )}
             </div>

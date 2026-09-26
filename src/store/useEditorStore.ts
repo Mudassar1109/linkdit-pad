@@ -411,3 +411,9 @@ export function dedupeSession(state: PersistedState): PersistedState {
     activePane: state.activePane,
   };
 }
+
+// DEV-ONLY test handle (removed before release): expose the real editor store
+// for the CDP harness, since dynamic imports resolve a duplicate module instance.
+if (import.meta.env?.DEV || (globalThis as unknown as { __LPD_TEST?: boolean }).__LPD_TEST) {
+  (globalThis as unknown as { __estore?: unknown }).__estore = useEditorStore;
+}

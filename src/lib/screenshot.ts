@@ -1,6 +1,23 @@
+import html2canvas from "html2canvas";
 import { getFocusedPaneTabId, useEditorStore } from "@/store/useEditorStore";
 
 export type ScreenshotMode = "visible" | "entire";
+
+/**
+ * Screenshot engine.
+ *
+ * The previous implementation rasterized the editor HTML by embedding it into an
+ * SVG <foreignObject> and drawing that image onto a <canvas>. Chromium-based
+ * webviews (WebView2) treat such SVGs as tainted regardless of CORS, so
+ * canvas.toBlob() always threw "Tainted canvases may not be exported".
+ *
+ * This engine instead re-renders the document content with canvas drawing
+ * primitives from the live computed styles (via html2canvas). No SVG, no
+ * foreignObject, no canvas-tainting resource loads. Every <img> inside the
+ * content is converted to a data: URL first (or replaced with a clean
+ * placeholder if it cannot be localized), so nothing inside the document can
+ * ever taint the output canvas.
+ */
 
 export function screenshotFileName(title?: string): string {
   const base =
@@ -18,12 +35,17 @@ export function focusedScreenshotTitle(): string | undefined {
   return id ? s.tabs[id]?.meta.title : undefined;
 }
 
-interface CaptureSource {
-  node: HTMLElement;
+interface ContentSource {
+  /** CSS-pixel content width of the editor. */
   width: number;
+  /** CSS-pixel height of the visible editor viewport. */
   viewportHeight: number;
+  /** CSS-pixel height of the full document content. */
   fullHeight: number;
+  /** CSS-pixel scroll offset of the focused editor. */
   scrollTop: number;
+  /** Builds a fresh, width-fixed, full-height render node. */
+  build: () => HTMLElement;
 }
 
 function findFocusedPaneRoot(): HTMLElement | null {
@@ -32,139 +54,243 @@ function findFocusedPaneRoot(): HTMLElement | null {
   return document.querySelector(`[data-pane="${pane}"]`) as HTMLElement | null;
 }
 
-function buildRichSource(container: HTMLElement): CaptureSource {
-  const node = container.cloneNode(true) as HTMLElement;
-  node.style.width = `${container.clientWidth}px`;
-  node.style.height = "auto";
-  node.style.minHeight = "0px";
-  node.style.overflow = "visible";
+function buildRichSource(container: HTMLElement): ContentSource {
+  const width = container.clientWidth;
+  const viewportHeight = container.clientHeight;
+  const fullHeight = Math.max(container.scrollHeight, viewportHeight);
+  const scrollTop = container.scrollTop;
   return {
-    node,
-    width: container.clientWidth,
-    viewportHeight: container.clientHeight,
-    fullHeight: container.scrollHeight,
-    scrollTop: container.scrollTop,
+    width,
+    viewportHeight,
+    fullHeight,
+    scrollTop,
+    build() {
+      const el = container.cloneNode(true) as HTMLElement;
+      el.style.width = `${width}px`;
+      el.style.height = "auto";
+      el.style.minHeight = "0px";
+      el.style.overflow = "visible";
+      el.style.position = "relative";
+      const pm = el.querySelector<HTMLElement>(".ProseMirror");
+      if (pm) pm.style.minHeight = "0px";
+      return el;
+    },
   };
 }
 
-function buildPlainSource(textarea: HTMLTextAreaElement): CaptureSource {
+function buildPlainSource(textarea: HTMLTextAreaElement): ContentSource {
   const cs = getComputedStyle(textarea);
-  const node = document.createElement("div");
-  node.style.cssText = [
-    "box-sizing:border-box",
-    "width:100%",
-    `min-height:${textarea.scrollHeight}px`,
-    "white-space:pre-wrap",
-    "overflow-wrap:break-word",
-    "word-break:break-word",
-    `padding:${cs.paddingTop} ${cs.paddingRight} ${cs.paddingBottom} ${cs.paddingLeft}`,
-    `font-size:${cs.fontSize}`,
-    `font-family:${cs.fontFamily}`,
-    `line-height:${cs.lineHeight}`,
-    `letter-spacing:${cs.letterSpacing}`,
-    `color:${cs.color}`,
-    `background:${cs.backgroundColor}`,
-    `direction:${cs.direction}`,
-    `text-align:${cs.textAlign}`,
-  ].join(";");
-  node.textContent = textarea.value || "";
+  const width = textarea.clientWidth;
+  const viewportHeight = textarea.clientHeight;
+  const fullHeight = textarea.scrollHeight;
+  const scrollTop = textarea.scrollTop;
   return {
-    node,
-    width: textarea.clientWidth,
-    viewportHeight: textarea.clientHeight,
-    fullHeight: textarea.scrollHeight,
-    scrollTop: textarea.scrollTop,
+    width,
+    viewportHeight,
+    fullHeight,
+    scrollTop,
+    build() {
+      const node = document.createElement("div");
+      node.style.cssText = [
+        "box-sizing:border-box",
+        `width:${width}px`,
+        `min-height:${fullHeight}px`,
+        "white-space:pre-wrap",
+        "overflow-wrap:break-word",
+        "word-break:break-word",
+        `padding:${cs.paddingTop} ${cs.paddingRight} ${cs.paddingBottom} ${cs.paddingLeft}`,
+        `font-size:${cs.fontSize}`,
+        `font-family:${cs.fontFamily}`,
+        `line-height:${cs.lineHeight}`,
+        `letter-spacing:${cs.letterSpacing}`,
+        `color:${cs.color}`,
+        `direction:${cs.direction}`,
+        `text-align:${cs.textAlign}`,
+      ].join(";");
+      node.textContent = textarea.value || "";
+      return node;
+    },
   };
 }
 
-function collectCssText(): string {
-  let out = "";
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      for (const rule of Array.from(sheet.cssRules ?? [])) out += rule.cssText + "\n";
-    } catch {
-      // Cross-origin stylesheet (e.g. Google Fonts) — cannot be inlined.
-    }
-  }
-  return out;
-}
-
-function copyCssVariables(target: HTMLElement): void {
-  const cs = getComputedStyle(document.documentElement);
-  for (let i = 0; i < cs.length; i++) {
-    const prop = cs[i];
-    if (prop.startsWith("--")) target.style.setProperty(prop, cs.getPropertyValue(prop));
-  }
-}
-
+/** Resolves the concrete editor background color for the active theme. */
 function resolveBackground(): string {
   const pane = findFocusedPaneRoot();
   const el = pane?.querySelector<HTMLElement>(".editor-canvas") ?? document.body;
   const cs = getComputedStyle(el);
-  const bg = cs.backgroundColor;
-  if (bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)") return bg;
-  return "hsl(var(--background))";
+  if (cs.backgroundColor && cs.backgroundColor !== "transparent" && cs.backgroundColor !== "rgba(0, 0, 0, 0)") {
+    return cs.backgroundColor;
+  }
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;left:0;top:0;width:0;height:0;background:hsl(var(--background));";
+  document.body.appendChild(probe);
+  const color = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  if (color && color !== "transparent" && color !== "rgba(0, 0, 0, 0)") return color;
+  return "#ffffff";
 }
 
-async function rasterize(source: CaptureSource, mode: ScreenshotMode): Promise<Blob> {
-  const width = Math.max(1, source.width);
-  const height = mode === "entire" ? Math.max(source.viewportHeight, source.fullHeight) : Math.max(1, source.viewportHeight);
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Could not read image data."));
+    reader.readAsDataURL(blob);
+  });
+}
 
-  const wrapper = document.createElement("div");
-  wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-  wrapper.className = document.documentElement.className;
-  wrapper.style.cssText = `width:${width}px;height:${height}px;overflow:hidden;background:${resolveBackground()};`;
-  copyCssVariables(wrapper);
-
-  const style = document.createElement("style");
-  style.textContent = collectCssText();
-  wrapper.appendChild(style);
-
-  const inner = source.node;
-  if (mode === "visible" && source.scrollTop > 0) {
-    inner.style.marginTop = `${-source.scrollTop}px`;
+async function urlToDataUrl(src: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(src, { cache: "force-cache", signal: controller.signal });
+    if (!res.ok) return null;
+    return await blobToDataUrl(await res.blob());
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
   }
-  wrapper.appendChild(inner);
+}
 
-  const xhtml = new XMLSerializer().serializeToString(wrapper);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${xhtml}</foreignObject></svg>`;
-  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+function replaceImageWithPlaceholder(img: HTMLImageElement): void {
+  const span = document.createElement("span");
+  span.setAttribute("role", "img");
+  span.style.cssText = [
+    "display:inline-flex",
+    "align-items:center",
+    "justify-content:center",
+    "min-width:140px",
+    "min-height:96px",
+    "max-width:100%",
+    "box-sizing:border-box",
+    "border:1px dashed rgba(148,163,184,.65)",
+    "border-radius:8px",
+    "background:rgba(148,163,184,.12)",
+    "color:rgba(100,116,139,.95)",
+    "font-size:12.5px",
+    "font-style:italic",
+    "text-align:center",
+    "padding:8px 12px",
+    "vertical-align:middle",
+  ].join(";");
+  span.textContent = img.alt || (img.getAttribute("src") ? "Image unavailable in screenshot" : "Image");
+  img.replaceWith(span);
+}
+
+/**
+ * Converts every <img> in the content to an inline data: URL so that nothing in
+ * the document can taint the canvas. Local sources (data:/blob: and anything the
+ * webview can fetch with proper CORS) are preserved; anything else is replaced
+ * with a clean placeholder so the rest of the screenshot still works.
+ */
+async function localizeContentImages(root: HTMLElement): Promise<void> {
+  const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+  await Promise.all(
+    images.map(async (img) => {
+      const src = img.getAttribute("src") || "";
+      if (!src || /^data:/i.test(src) || /^blob:/i.test(src)) return;
+      const data = await urlToDataUrl(src);
+      if (data) {
+        img.setAttribute("src", data);
+      } else {
+        replaceImageWithPlaceholder(img);
+      }
+    })
+  );
+}
+
+/** Removes url()-based CSS background images that html2canvas cannot fetch. */
+function neutralizeBackgroundImages(root: HTMLElement): void {
+  for (const el of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
+    const bi = getComputedStyle(el).backgroundImage;
+    if (bi && bi !== "none" && /url\(/.test(bi) && !/^url\(\s*["']?data:/i.test(bi)) {
+      el.style.setProperty("background-image", "none");
+    }
+  }
+}
+
+const MAX_DIM = 16384;
+const MAX_SLICE = 8000;
+
+async function renderRange(source: ContentSource, startY: number, endY: number): Promise<Blob> {
+  const width = source.width;
+  const height = Math.max(1, endY - startY);
+  if (width <= 0) throw new Error("Nothing to capture — open a document first.");
+
+  let scale = Math.min(2, window.devicePixelRatio || 1);
+  const fit = Math.min(MAX_DIM / width, MAX_DIM / height);
+  scale = Math.min(scale, Math.max(0.02, fit));
+  if (width * scale > MAX_DIM + 0.5 || height * scale > MAX_DIM + 0.5) {
+    throw new Error(`Document is too tall to export as one image (${width}×${height}px is the platform limit).`);
+  }
+
+  const backgroundColor = resolveBackground();
+
+  const sandbox = document.createElement("div");
+  sandbox.style.cssText = `position:absolute;left:-100000px;top:0;width:${width}px;pointer-events:none;`;
+  document.body.appendChild(sandbox);
+
+  const full = source.build();
+  sandbox.appendChild(full);
+  try {
+    await localizeContentImages(full);
+    neutralizeBackgroundImages(full);
+  } catch {
+    // Localization is best-effort; never abort the whole screenshot.
+  }
+
+  const sliceHeight = Math.min(MAX_SLICE, Math.floor((MAX_DIM * 0.98) / scale));
+  const slices: HTMLCanvasElement[] = [];
 
   try {
-    const img = new Image();
-    img.decoding = "sync";
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error("Could not render the document image."));
-      img.src = svgUrl;
-    });
-
-    const MAX_DIM = 16000;
-    let scale = Math.min(2, window.devicePixelRatio || 1);
-    if (width * scale > MAX_DIM || height * scale > MAX_DIM) {
-      scale = Math.max(0.5, MAX_DIM / Math.max(width, height));
+    for (let y = startY; y < endY; y += sliceHeight) {
+      const sh = Math.min(sliceHeight, endY - y);
+      const box = document.createElement("div");
+      box.style.cssText = `position:relative;overflow:hidden;width:${width}px;height:${sh}px;background:${backgroundColor};`;
+      const inner = full.cloneNode(true) as HTMLElement;
+      inner.style.width = `${width}px`;
+      inner.style.marginTop = `${-y}px`;
+      box.appendChild(inner);
+      sandbox.appendChild(box);
+      try {
+        const canvas = await html2canvas(box, {
+          scale,
+          backgroundColor,
+          allowTaint: false,
+          useCORS: false,
+          logging: false,
+          imageTimeout: 20000,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: width,
+          windowHeight: sh,
+        });
+        slices.push(canvas);
+      } finally {
+        box.remove();
+      }
     }
 
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(width * scale));
-    canvas.height = Math.max(1, Math.round(height * scale));
-    const ctx = canvas.getContext("2d");
+    const outWidth = Math.max(1, Math.round(width * scale));
+    const outHeight = Math.max(1, Math.round(height * scale));
+    const final = document.createElement("canvas");
+    final.width = outWidth;
+    final.height = outHeight;
+    const ctx = final.getContext("2d");
     if (!ctx) throw new Error("Canvas rendering is not available.");
 
-    try {
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0, width, height);
-    } catch {
-      throw new Error(
-        "Screenshot was blocked because the document contains an external image the app cannot re-render."
-      );
-    }
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, outWidth, outHeight);
+    slices.forEach((slice, i) => {
+      ctx.drawImage(slice, 0, Math.round(i * sliceHeight * scale));
+    });
 
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    const blob = await new Promise<Blob | null>((resolve) => final.toBlob(resolve, "image/png"));
     if (!blob) throw new Error("Could not encode the screenshot as a PNG.");
     return blob;
   } finally {
-    URL.revokeObjectURL(svgUrl);
+    sandbox.remove();
   }
 }
 
@@ -173,12 +299,15 @@ export async function captureEditorToBlob(mode: ScreenshotMode): Promise<Blob> {
   if (!pane) throw new Error("No editor pane found. Open a document first.");
 
   const rich = pane.querySelector<HTMLElement>(".editor-container");
-  if (rich) return rasterize(buildRichSource(rich), mode);
-
   const textarea = pane.querySelector<HTMLTextAreaElement>("textarea");
-  if (textarea) return rasterize(buildPlainSource(textarea), mode);
+  const source = rich ? buildRichSource(rich) : textarea ? buildPlainSource(textarea) : null;
+  if (!source) throw new Error("No editable content to capture. Open a document first.");
 
-  throw new Error("No editable content to capture. Open a document first.");
+  if (mode === "entire") {
+    return renderRange(source, 0, source.fullHeight);
+  }
+  const top = Math.min(source.scrollTop, Math.max(0, source.fullHeight - source.viewportHeight));
+  return renderRange(source, top, top + source.viewportHeight);
 }
 
 export async function saveScreenshotPng(blob: Blob, defaultName: string): Promise<boolean> {

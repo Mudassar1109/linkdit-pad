@@ -13,6 +13,7 @@ import {
 import { useTrashStore } from "@/store/useTrashStore";
 import { restoreTrashEntry, purgeTrashEntries, emptyTrash } from "@/lib/trash";
 import type { TrashEntry } from "@/types/trash";
+import { useI18n, useI18nStore } from "@/store/useI18nStore";
 
 type SortKey = "deleted" | "name" | "created";
 
@@ -28,25 +29,27 @@ function formatDateTime(iso: string): string {
 }
 
 function formatRelative(iso: string): string {
+  const t = useI18nStore.getState().t;
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
+  if (minutes < 1) return t("status.justNow");
+  if (minutes < 60) return t("status.minutesAgo", { count: minutes });
+  if (hours < 24) return t("status.hoursAgo", { count: hours });
+  if (days < 7) return t("status.daysAgo", { count: days });
   return formatDateTime(iso);
 }
 
 function originalLocation(entry: TrashEntry): string {
-  if (!entry.filePath) return "This computer (unsigned)";
+  if (!entry.filePath) return useI18nStore.getState().t("panels.trash.locationUnsigned");
   const parts = entry.filePath.split(/[\\/]/).filter(Boolean);
   parts.pop();
   return parts.join("\\") || entry.filePath;
 }
 
 export function TrashPanel() {
+  const { t } = useI18n();
   const entries = useTrashStore((s) => s.entries);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("deleted");
@@ -134,7 +137,7 @@ export function TrashPanel() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search trash..."
+            placeholder={t("panels.trash.filterPlaceholder")}
             className="h-7 w-full rounded-md border border-input bg-background pl-7 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
@@ -146,12 +149,12 @@ export function TrashPanel() {
                 "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
                 "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
-              aria-label="Toggle sort direction"
+              aria-label={t("panels.trash.toggleSort")}
             >
               <ArrowUpDown size={13} className={cn("transition-transform", sortDesc ? "" : "rotate-180")} />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Toggle sort direction</TooltipContent>
+          <TooltipContent side="bottom">{t("panels.trash.toggleSort")}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -159,19 +162,19 @@ export function TrashPanel() {
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
           <SelectTrigger className="h-6 w-auto min-w-0 gap-1 rounded-md border border-input bg-transparent px-2 py-0 text-[11px] text-foreground">
             <ArrowUpDown size={11} className="text-muted-foreground" />
-            <SelectValue placeholder="Sort" />
+            <SelectValue placeholder={t("panels.trash.sortPlaceholder")} />
           </SelectTrigger>
           <SelectContent className="min-w-[140px]">
-            <SelectItem value="deleted">Date Deleted</SelectItem>
-            <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="created">Date Created</SelectItem>
+            <SelectItem value="deleted">{t("panels.trash.sortDeleted")}</SelectItem>
+            <SelectItem value="name">{t("panels.trash.sortName")}</SelectItem>
+            <SelectItem value="created">{t("panels.trash.sortCreated")}</SelectItem>
           </SelectContent>
         </Select>
         {selected.size > 0 ? (
-          <span className="text-[10px] text-muted-foreground">{selected.size} selected</span>
+          <span className="text-[10px] text-muted-foreground">{t("common.selected", { count: selected.size })}</span>
         ) : (
           <span className="text-[10px] text-muted-foreground">
-            {entries.length} item{entries.length === 1 ? "" : "s"}
+            {t("common.documents", { count: entries.length })}
           </span>
         )}
         <Tooltip>
@@ -182,10 +185,10 @@ export function TrashPanel() {
               className="flex h-6 items-center gap-1 rounded-md px-2 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-danger disabled:opacity-40"
             >
               <Trash2 size={11} />
-              Empty
+              {t("panels.trash.emptyTrash")}
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Empty Trash</TooltipContent>
+          <TooltipContent side="bottom">{t("panels.trash.emptyTrash")}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -201,7 +204,7 @@ export function TrashPanel() {
             }}
           >
             <RotateCcw size={11} />
-            Restore
+            {t("common.restore")}
           </Button>
           <Button
             variant="ghost"
@@ -210,7 +213,7 @@ export function TrashPanel() {
             onClick={() => askConfirm("purge")}
           >
             <Trash2 size={11} />
-            Delete Permanently
+            {t("panels.trash.deletePermanently")}
           </Button>
         </div>
       )}
@@ -219,13 +222,13 @@ export function TrashPanel() {
         {entries.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
             <Trash2 size={32} strokeWidth={1.5} />
-            <p className="text-sm">Trash is empty</p>
-            <p className="text-xs text-muted-foreground/70">Deleted documents will appear here.</p>
+            <p className="text-sm">{t("panels.trash.empty")}</p>
+            <p className="text-xs text-muted-foreground/70">{t("panels.trash.emptyHint")}</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
             <Search size={24} strokeWidth={1.5} />
-            <p className="text-sm">No matching items</p>
+            <p className="text-sm">{t("panels.trash.noMatching")}</p>
           </div>
         ) : (
           <div className="space-y-0.5 px-2">
@@ -237,7 +240,7 @@ export function TrashPanel() {
                 {allFilteredSelected ? <Check size={10} className="text-primary" /> : null}
               </span>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Select All
+                {t("menu.selectAll")}
               </span>
               <span className="ml-auto text-[10px] text-muted-foreground">{filtered.length}</span>
             </button>
@@ -286,20 +289,22 @@ export function TrashPanel() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle size={16} className="text-danger" />
-              {confirmTarget === "empty" ? "Empty Trash?" : "Delete Permanently?"}
+              {confirmTarget === "empty" ? t("panels.trash.emptyTrash") : t("panels.trash.deletePermanently")}
             </DialogTitle>
             <DialogDescription>
               {confirmTarget === "empty"
-                ? "All documents in the trash will be permanently deleted. This cannot be undone."
-                : `The selected document${selectedEntries.length === 1 ? "" : "s"} will be permanently deleted. This cannot be undone.`}
+                ? t("panels.trash.emptyTrashConfirm")
+                : selectedEntries.length === 1
+                  ? t("panels.trash.deletePermanentlyConfirm", { title: selectedEntries[0].title })
+                  : t("panels.trash.purgeMultiConfirm")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setConfirmTarget(null)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button size="sm" className="bg-danger text-danger-foreground hover:bg-danger/90" onClick={runConfirm}>
-              Delete
+              {t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

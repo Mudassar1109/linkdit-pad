@@ -3,6 +3,7 @@ import { getFocusedPaneTabId, useEditorStore } from "@/store/useEditorStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useToastStore } from "@/store/useToastStore";
 import { useAutosaveStore } from "@/store/useAutosaveStore";
+import { useI18nStore } from "@/store/useI18nStore";
 import { saveFocusedDocument } from "@/lib/saveDocument";
 
 /**
@@ -104,12 +105,12 @@ export function useAutoSave() {
           // Shouldn't happen (we only schedule documents with a path), but be safe.
           useAutosaveStore.getState().setStatus("idle", outcome.tabId, null);
         } else {
-          const message = outcome.message || "Auto-save failed";
+          const message = outcome.message || useI18nStore.getState().t("status.autoSaveFailed");
           useAutosaveStore.getState().setStatus("error", outcome.tabId, message);
           if (lastErrorTabRef.current !== outcome.tabId) {
             lastErrorTabRef.current = outcome.tabId;
             console.error(`[Auto Save] Failed to write "${outcome.path}":`, outcome.error);
-            useToastStore.getState().show("error", `Auto-save failed: ${message}`);
+            useToastStore.getState().show("error", useI18nStore.getState().t("status.autoSaveFailedHelp", { error: message }));
           }
         }
       } finally {

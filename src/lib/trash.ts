@@ -3,6 +3,7 @@ import { useBookmarksStore } from "@/store/useBookmarksStore";
 import { useEditorStore } from "@/store/useEditorStore";
 import { useRecentFilesStore } from "@/store/useRecentFilesStore";
 import { useToastStore } from "@/store/useToastStore";
+import { useI18nStore } from "@/store/useI18nStore";
 import type { TrashEntry } from "@/types/trash";
 import type { EditorTab } from "@/types/editor";
 
@@ -36,7 +37,7 @@ export function moveTabToTrash(tab: EditorTab): void {
   bookmarkStore.removeFileBookmarks(tab.meta.id);
   store.closeTab(tab.meta.id);
   useRecentFilesStore.getState().remove(tab.meta.id);
-  useToastStore.getState().show("success", `Moved "${tab.meta.title}" to Trash`);
+  useToastStore.getState().show("success", useI18nStore.getState().t("toast.deleted", { title: tab.meta.title }));
 }
 
 /**
@@ -82,7 +83,7 @@ export function restoreTrashEntry(entryId: string): void {
     isBookmarked: entry.isBookmarked,
   });
 
-  useToastStore.getState().show("success", `Restored "${entry.title}"`);
+  useToastStore.getState().show("success", useI18nStore.getState().t("toast.restored", { title: entry.title }));
 }
 
 /** Removes a file from disk if it exists (best-effort, Tauri-only). */
@@ -105,7 +106,7 @@ export async function purgeTrashEntries(entries: TrashEntry[]): Promise<void> {
       .map((e) => removeFileIfExists(e.filePath as string))
   );
   if (titles.length > 0) {
-    useToastStore.getState().show("success", `Deleted ${titles.length} item${titles.length > 1 ? "s" : ""}`);
+    useToastStore.getState().show("success", useI18nStore.getState().t("toast.trashed", { count: titles.length }));
   }
 }
 
@@ -119,5 +120,5 @@ export async function emptyTrash(): Promise<void> {
       .filter((e) => e.filePath)
       .map((e) => removeFileIfExists(e.filePath as string))
   );
-  useToastStore.getState().show("success", "Trash emptied");
+  useToastStore.getState().show("success", useI18nStore.getState().t("toast.trashEmptied"));
 }

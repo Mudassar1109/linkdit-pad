@@ -12,6 +12,7 @@ import { getPlainTarget } from "@/lib/bookmarks";
 import { docPositionsForCharOffsets } from "@/lib/bookmarkPositions";
 import { findMatchByOrdinal, searchText, replaceAllMatches, type SearchOptions } from "@/lib/textSearch";
 import type { DocSearchMatch } from "@/store/useSidebarSearchStore";
+import { useI18n } from "@/store/useI18nStore";
 
 function HighlightPreview({ match }: { match: DocSearchMatch }) {
   const before = match.content.slice(0, match.matchStart);
@@ -27,6 +28,7 @@ function HighlightPreview({ match }: { match: DocSearchMatch }) {
 }
 
 export function SearchPanel() {
+  const { t } = useI18n();
   const {
     query, isRegex, caseSensitive, wholeWord, history,
     results, totalMatches, matchedDocs, isSearching,
@@ -145,7 +147,7 @@ export function SearchPanel() {
         m.offset + (m.matchEnd - m.matchStart),
       ]);
       editor.chain().focus().deleteRange({ from, to }).insertContent(replaceText).run();
-      setReplaceMessage("Replaced 1 occurrence");
+      setReplaceMessage(t("search.replaced", { count: 1 }));
       useSidebarSearchStore.getState().runSearch();
       return;
     }
@@ -158,7 +160,7 @@ export function SearchPanel() {
       const end = m.offset + (m.matchEnd - m.matchStart);
       el.setRangeText(replaceText, start, end, "select");
       useEditorStore.getState().updateContent(current.fileId, el.value);
-      setReplaceMessage("Replaced 1 occurrence");
+      setReplaceMessage(t("search.replaced", { count: 1 }));
       useSidebarSearchStore.getState().runSearch();
       return;
     }
@@ -171,7 +173,7 @@ export function SearchPanel() {
       replaceText +
       sourceText.slice(m.offset + (m.matchEnd - m.matchStart));
     useEditorStore.getState().updateContent(current.fileId, newText);
-    setReplaceMessage("Replaced 1 occurrence");
+    setReplaceMessage(t("search.replaced", { count: 1 }));
     useSidebarSearchStore.getState().runSearch();
   };
 
@@ -196,7 +198,7 @@ export function SearchPanel() {
         const [from, to] = pairs[i];
         if (to > from) editor.chain().focus().deleteRange({ from, to }).insertContent(replaceText).run();
       }
-      setReplaceMessage(`Replaced ${pairs.length} occurrences`);
+      setReplaceMessage(t("search.replaced", { count: pairs.length }));
       useSidebarSearchStore.getState().runSearch();
       return;
     }
@@ -207,7 +209,7 @@ export function SearchPanel() {
       if (count > 0) {
         el.setRangeText("", 0, 0, "select");
         useEditorStore.getState().updateContent(current.fileId, newText);
-        setReplaceMessage(`Replaced ${count} occurrences`);
+        setReplaceMessage(t("search.replaced", { count }));
         useSidebarSearchStore.getState().runSearch();
       }
       return;
@@ -216,7 +218,7 @@ export function SearchPanel() {
     const { text: newText, count } = replaceAllMatches(current.sourceText, q, opts, replaceText);
     if (count > 0) {
       useEditorStore.getState().updateContent(current.fileId, newText);
-      setReplaceMessage(`Replaced ${count} occurrences`);
+      setReplaceMessage(t("search.replaced", { count }));
       useSidebarSearchStore.getState().runSearch();
     }
   };
@@ -237,23 +239,23 @@ export function SearchPanel() {
             onKeyDown={(e) => {
               if (e.key === "Enter") commitHistory();
             }}
-            placeholder="Search documents..."
+            placeholder={t("panels.searchDocs.placeholder")}
             className="h-7 w-full rounded-md border border-input bg-background pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
           {query && (
             <button
               onClick={clearSearch}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
+              aria-label={t("common.clear")}
             >
               <X size={12} />
             </button>
           )}
         </div>
         <div className="flex items-center gap-1">
-          <Toggle size="sm" variant="outline" pressed={caseSensitive} onPressedChange={setCaseSensitive} aria-label="Case Sensitive" className="h-5 text-[10px]">Aa</Toggle>
-          <Toggle size="sm" variant="outline" pressed={wholeWord} onPressedChange={setWholeWord} aria-label="Whole Word" className="h-5 text-[10px]">W</Toggle>
-          <Toggle size="sm" variant="outline" pressed={isRegex} onPressedChange={setIsRegex} aria-label="Regex" className="h-5 text-[10px]">.*</Toggle>
+          <Toggle size="sm" variant="outline" pressed={caseSensitive} onPressedChange={setCaseSensitive} aria-label={t("search.caseSensitive")} className="h-5 text-[10px]">Aa</Toggle>
+          <Toggle size="sm" variant="outline" pressed={wholeWord} onPressedChange={setWholeWord} aria-label={t("search.wholeWord")} className="h-5 text-[10px]">W</Toggle>
+          <Toggle size="sm" variant="outline" pressed={isRegex} onPressedChange={setIsRegex} aria-label={t("search.regex")} className="h-5 text-[10px]">.*</Toggle>
           <div className="ml-auto flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -266,12 +268,12 @@ export function SearchPanel() {
                     "flex h-5 w-5 items-center justify-center rounded-md transition-colors",
                     showReplace ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
-                  aria-label="Replace"
+                  aria-label={t("search.replace")}
                 >
                   <Replace size={12} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Replace</TooltipContent>
+              <TooltipContent side="bottom">{t("search.replace")}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -281,12 +283,12 @@ export function SearchPanel() {
                     if (!showHistory) inputRef.current?.focus();
                   }}
                   className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  aria-label="Search history"
+                  aria-label={t("panels.recent.history")}
                 >
                   <History size={12} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">History</TooltipContent>
+              <TooltipContent side="bottom">{t("panels.recent.history")}</TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -297,7 +299,7 @@ export function SearchPanel() {
               <input
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
-                placeholder="Replace with..."
+                placeholder={t("search.replacePlaceholder")}
                 className="h-6 w-full rounded-md border border-input bg-background pl-6 pr-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -306,14 +308,14 @@ export function SearchPanel() {
               disabled={!current}
               className="h-6 rounded-md border border-border px-2 text-[11px] text-foreground transition-colors hover:bg-muted disabled:opacity-40"
             >
-              Replace
+              {t("search.replace")}
             </button>
             <button
               onClick={replaceAllSelected}
               disabled={!current}
               className="h-6 rounded-md border border-border px-2 text-[11px] text-foreground transition-colors hover:bg-muted disabled:opacity-40"
             >
-              All
+              {t("search.replaceAll")}
             </button>
           </div>
         )}
@@ -327,17 +329,17 @@ export function SearchPanel() {
           <div className="space-y-0.5 px-2">
             <div className="flex items-center justify-between px-2 py-1">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Recent Searches
+                {t("panels.recent.history")}
               </span>
               <button
                 onClick={clearHistory}
                 className="text-[10px] text-muted-foreground hover:text-danger"
               >
-                Clear
+                {t("common.clear")}
               </button>
             </div>
             {history.length === 0 && (
-              <p className="px-2 py-3 text-center text-xs text-muted-foreground">No search history yet</p>
+              <p className="px-2 py-3 text-center text-xs text-muted-foreground">{t("panels.searchDocs.noHistory")}</p>
             )}
             {history.map((h) => (
               <button
@@ -357,18 +359,18 @@ export function SearchPanel() {
         ) : !query.trim() ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
             <Search size={32} strokeWidth={1.5} />
-            <p className="text-sm">Search all documents</p>
-            <p className="text-xs text-muted-foreground/70">Type to search the current document, open tabs and saved documents.</p>
+            <p className="text-sm">{t("panels.searchDocs.searchAll")}</p>
+            <p className="text-xs text-muted-foreground/70">{t("panels.searchDocs.searchHint")}</p>
           </div>
         ) : isSearching ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-            Searching…
+            {t("panels.searchDocs.searching")}
           </div>
         ) : results.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
             <FileText size={24} strokeWidth={1.5} />
-            <p className="text-sm">No Results Found</p>
-            <p className="text-xs text-muted-foreground/70">Try different keywords or adjust the search options.</p>
+            <p className="text-sm">{t("panels.searchDocs.empty")}</p>
+            <p className="text-xs text-muted-foreground/70">{t("panels.searchDocs.noResultsHint")}</p>
           </div>
         ) : (
           <div className="space-y-1 px-2">
@@ -376,7 +378,7 @@ export function SearchPanel() {
               <div key={fileId} className="space-y-0.5">
                 <div className="flex items-center justify-between px-2 py-1">
                   <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {matches[0]?.match.title ?? "Untitled"}
+                    {matches[0]?.match.title ?? t("common.untitled")}
                   </span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">{matches.length}</span>
                 </div>
@@ -395,7 +397,7 @@ export function SearchPanel() {
                       )}
                     >
                       <span className="mt-0.5 shrink-0 font-mono text-[10px] text-muted-foreground">
-                        Ln {m.line}
+                        {t("search.line", { line: m.line })}
                       </span>
                       <span className="min-w-0 flex-1">
                         <HighlightPreview match={m} />
@@ -412,15 +414,15 @@ export function SearchPanel() {
 
       <div className="flex items-center justify-between border-t border-border px-3 py-1.5 shrink-0">
         <span className="text-[10px] text-muted-foreground">
-          {results.length > 0 ? `${currentIndex + 1}/${totalMatches} match${totalMatches === 1 ? "" : "es"}` : "0 matches"}
-          {matchedDocs > 0 && <span className="ml-1 text-muted-foreground/60">in {matchedDocs} doc{matchedDocs === 1 ? "" : "s"}</span>}
+          {results.length > 0 ? `${currentIndex + 1}/${totalMatches} ${t("search.matches", { count: totalMatches })}` : t("search.matches", { count: 0 })}
+          {matchedDocs > 0 && <span className="ml-1 text-muted-foreground/60">in {t("common.documents", { count: matchedDocs })}</span>}
         </span>
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => goToIndex(currentIndex - 1)}
             disabled={results.length === 0}
             className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-            aria-label="Previous match"
+            aria-label={t("common.previous")}
           >
             <ChevronUp size={13} />
           </button>
@@ -428,7 +430,7 @@ export function SearchPanel() {
             onClick={() => goToIndex(currentIndex + 1)}
             disabled={results.length === 0}
             className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-            aria-label="Next match"
+            aria-label={t("common.next")}
           >
             <ChevronDown size={13} />
           </button>

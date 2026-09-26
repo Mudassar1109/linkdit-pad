@@ -8,12 +8,14 @@ import { useLockStore } from "@/store/useLockStore";
 import { useConfirmStore } from "@/store/useConfirmStore";
 import { saveFile } from "@/components/layout/Toolbar";
 import { moveTabToTrash } from "@/lib/trash";
+import { useI18n } from "@/store/useI18nStore";
 import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuSeparator
 } from "@/components/ui/context-menu";
 
 export function EditorTabs() {
+  const { t } = useI18n();
   const { tabs, groups, activeGroupId, setActiveTab, closeTab, openTab, renameTab } = useEditorStore();
   const group = groups[activeGroupId];
   const lockLocks = useLockStore((s) => s.locks);
@@ -54,7 +56,7 @@ export function EditorTabs() {
     const tab = tabs[tabId];
     if (tab?.meta.isDirty) {
       const action = await useConfirmStore.getState().show(
-        `"${tab.meta.title}" has unsaved changes. Save before closing?`
+        t("dialogs.confirm.unsavedChangesBody", { title: tab.meta.title })
       );
       if (action === "cancel") return;
       if (action === "save") {
@@ -62,7 +64,7 @@ export function EditorTabs() {
       }
     }
     closeTab(tabId);
-  }, [closeTab, tabs]);
+  }, [closeTab, tabs, t]);
 
   const handleDuplicate = useCallback((tabId: string) => {
     const tab = tabs[tabId];
@@ -74,26 +76,26 @@ export function EditorTabs() {
     const hasDirty = tabIds.some((id) => id !== tabId && tabs[id]?.meta.isDirty);
     if (hasDirty) {
       const action = await useConfirmStore.getState().show(
-        "Close other tabs with unsaved changes?"
+        t("dialogs.confirm.closeOthers")
       );
       if (action !== "discard") return;
     }
     for (const id of tabIds) {
       if (id !== tabId) closeTab(id);
     }
-  }, [group?.tabIds, closeTab, tabs]);
+  }, [group?.tabIds, closeTab, tabs, t]);
 
   const handleCloseAll = useCallback(async () => {
     const tabIds = group?.tabIds || [];
     const hasDirty = tabIds.some((id) => tabs[id]?.meta.isDirty);
     if (hasDirty) {
       const action = await useConfirmStore.getState().show(
-        "Close all tabs with unsaved changes?"
+        t("dialogs.confirm.closeAll")
       );
       if (action !== "discard") return;
     }
     for (const id of [...tabIds]) closeTab(id);
-  }, [group?.tabIds, closeTab, tabs]);
+  }, [group?.tabIds, closeTab, tabs, t]);
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -172,7 +174,7 @@ export function EditorTabs() {
   const tabIds = group.tabIds;
 
   return (
-    <div className="relative flex h-10 shrink-0 items-end gap-1 border-b border-border/80 bg-card/40 px-2 pt-1.5">
+    <div className="relative flex h-10 shrink-0 items-end gap-1 border-b border-border/80 bg-surface/60 px-2 pt-1.5">
       {canScrollLeft && (
         <button
           onClick={() => scrollBy(-1)}
@@ -240,7 +242,7 @@ export function EditorTabs() {
                       <span className="truncate max-w-[100px]">{tab.meta.title}</span>
                     )}
                     {isTabLocked(tabId) && (
-                      <Lock size={10} className="shrink-0 text-muted-foreground/70" aria-label="Document is locked" />
+                      <Lock size={10} className="shrink-0 text-muted-foreground/70" aria-label={t("tabs.documentLocked")} />
                     )}
                     {tab.meta.isDirty && (
                       <span
@@ -251,7 +253,7 @@ export function EditorTabs() {
                       />
                     )}
                     <button
-                      aria-label={`Close ${tab.meta.title}`}
+                      aria-label={t("tabs.closeTabTitle", { title: tab.meta.title })}
                       onClick={(e) => handleClose(e, tabId)}
                       className={cn(
                         "ml-auto shrink-0 rounded-md p-0.5 text-muted-foreground/50 transition-colors",
@@ -264,16 +266,16 @@ export function EditorTabs() {
                   </motion.div>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                  <ContextMenuItem onClick={() => closeTab(tabId)}>Close</ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleCloseOthers(tabId)}>Close Others</ContextMenuItem>
-                  <ContextMenuItem onClick={handleCloseAll}>Close All</ContextMenuItem>
+                  <ContextMenuItem onClick={() => closeTab(tabId)}>{t("tabs.closeTab")}</ContextMenuItem>
+                  <ContextMenuItem onClick={() => handleCloseOthers(tabId)}>{t("tabs.closeOthers")}</ContextMenuItem>
+                  <ContextMenuItem onClick={handleCloseAll}>{t("tabs.closeAll")}</ContextMenuItem>
                   <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => { const tab = tabs[tabId]; if (tab) moveTabToTrash(tab); }}>
-                    <Trash2 size={14} /> Move to Trash
+                    <Trash2 size={14} /> {t("tabs.moveToTrash")}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => startRename(tabId)}>Rename</ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleDuplicate(tabId)}>Duplicate</ContextMenuItem>
+                  <ContextMenuItem onClick={() => startRename(tabId)}>{t("common.rename")}</ContextMenuItem>
+                  <ContextMenuItem onClick={() => handleDuplicate(tabId)}>{t("common.duplicate")}</ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
             );
@@ -291,7 +293,7 @@ export function EditorTabs() {
       <Button
         variant="ghost"
         size="icon"
-        aria-label="New tab"
+        aria-label={t("tabs.newTab")}
         onClick={() => openTab()}
         className="mb-0.5 h-[30px] w-8 shrink-0 self-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
       >

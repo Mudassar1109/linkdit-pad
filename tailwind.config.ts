@@ -45,6 +45,15 @@ export default {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          raised: "hsl(var(--surface-raised))",
+        },
+        sidebar: "hsl(var(--sidebar))",
+        toolbar: "hsl(var(--toolbar))",
+        "secondary-foreground": "hsl(var(--secondary-foreground))",
+        "accent-hover": "hsl(var(--accent-hover))",
+        "accent-active": "hsl(var(--accent-active))",
       },
       borderRadius: {
         lg: "14px", // LinkDit Pad standard radius

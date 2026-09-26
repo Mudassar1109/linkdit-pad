@@ -6,6 +6,7 @@ import { useEditorStore, getFocusedPaneTabId } from "@/store/useEditorStore";
 import { useEditorBridge } from "@/store/useEditorBridge";
 import { useOutlineStore } from "@/store/useOutlineStore";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/store/useI18nStore";
 
 interface OutlineNode {
   level: number;
@@ -96,6 +97,7 @@ function Row({ node, depth }: { node: OutlineNode; depth: number }) {
 }
 
 export function DocumentOutlinePanel() {
+  const { t } = useI18n();
   const close = useOutlineStore((s) => s.close);
   const tabs = useEditorStore((s) => s.tabs);
   const splitMode = useEditorStore((s) => s.splitMode);
@@ -122,21 +124,21 @@ export function DocumentOutlinePanel() {
       animate={{ width: 240, opacity: 1 }}
       exit={{ width: 0, opacity: 0 }}
       transition={{ duration: 0.18, ease: "easeInOut" }}
-      className="flex h-full shrink-0 flex-col border-l border-border bg-card/40"
-      aria-label="Document Outline"
+      className="flex h-full shrink-0 flex-col border-l border-border bg-surface"
+      aria-label={t("menu.documentOutline")}
     >
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/70 px-3">
         <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/60 text-primary">
             <ListTree size={13} />
           </span>
-          Document Outline
+          {t("menu.documentOutline")}
         </span>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Close outline panel"
-          title="Close outline panel"
+          aria-label={t("common.close")}
+          title={t("common.close")}
           onClick={close}
           className="h-6 w-6"
         >
@@ -147,14 +149,14 @@ export function DocumentOutlinePanel() {
         {!tab ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
             <ListTree size={32} strokeWidth={1.5} />
-            <p className="text-sm">No document open</p>
+            <p className="text-sm">{t("editor.empty.noDocumentOpen")}</p>
           </div>
         ) : headings.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
             <Heading1 size={28} strokeWidth={1.5} />
-            <p className="text-sm">No headings found</p>
+            <p className="text-sm">{t("panels.outline.empty")}</p>
             <p className="text-xs text-muted-foreground/70">
-              Apply Heading 1&ndash;6 styles (Format &rarr; Headings) to build an outline.
+              {t("panels.outline.hint")}
             </p>
           </div>
         ) : (

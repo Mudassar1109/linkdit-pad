@@ -14,11 +14,13 @@ import { LockPasswordDialog } from "@/components/features/LockPasswordDialog";
 import { CommandPalette } from "@/components/features/CommandPalette";
 import { SearchReplace } from "@/components/features/SearchReplace";
 import { SettingsPanel } from "@/components/features/SettingsPanel";
+import { AboutDialog } from "@/components/features/AboutDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RecoveryDialog } from "@/components/ui/recovery-dialog";
 import { useThemeStore } from "@/store/useThemeStore";
+import { useI18nStore } from "@/store/useI18nStore";
 import { useEditorStore } from "@/store/useEditorStore";
 import { useCommandPaletteStore } from "@/store/useCommandPaletteStore";
 import { useSearchStore } from "@/store/useSearchStore";
@@ -31,6 +33,8 @@ import { useSyncRecentFiles } from "@/hooks/useSyncRecentFiles";
 import { useVersionCapture } from "@/hooks/useVersionCapture";
 import { useAutoBackup } from "@/hooks/useAutoBackup";
 import { addBookmarkAtCursor } from "@/lib/bookmarks";
+import { openPrintDialog } from "@/lib/print";
+import { PrintDialog } from "@/components/print/PrintDialog";
 import type { EditorTab } from "@/types/editor";
 import {
   saveSession,
@@ -234,6 +238,7 @@ export default function App() {
       if (ctrl && e.key === "s") { e.preventDefault(); saveFile(); return; }
       if (ctrl && e.key === "n") { e.preventDefault(); openTab(); return; }
       if (ctrl && e.key === "o") { e.preventDefault(); openFile(); return; }
+      if (ctrl && !e.shiftKey && e.key === "p") { e.preventDefault(); openPrintDialog(); return; }
       if (ctrl && e.key === "w") {
         e.preventDefault();
         const { tabs, groups, activeGroupId, closeTab } = useEditorStore.getState();
@@ -244,7 +249,7 @@ export default function App() {
             closeTab(activeTabId);
           } else {
             useConfirmStore.getState().show(
-              `"${tab.meta.title}" has unsaved changes. Save before closing?`
+              useI18nStore.getState().t("dialogs.confirm.unsavedChangesBody", { title: tab.meta.title })
             ).then((action) => {
               if (action === "save") {
                 saveFile().then(() => {
@@ -299,7 +304,7 @@ export default function App() {
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
         <TitleBar />
         <Toolbar />
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           <AnimatePresence>
             {sidebarVisible && <Sidebar />}
           </AnimatePresence>
@@ -318,7 +323,9 @@ export default function App() {
         </div>
         <StatusBar />
         <CommandPalette />
+        <PrintDialog />
         <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
+        <AboutDialog />
         <ConfirmDialog />
         <VersionHistoryDialog />
         <BackupRecoveryDialog />

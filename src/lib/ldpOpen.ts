@@ -1,6 +1,7 @@
 import { openFileRaw } from "@/components/layout/Toolbar";
 import { useEditorStore } from "@/store/useEditorStore";
 import { useToastStore } from "@/store/useToastStore";
+import { useI18nStore } from "@/store/useI18nStore";
 
 export function isLdpPath(path: string): boolean {
   return path.toLowerCase().endsWith(".ldp");
@@ -44,7 +45,7 @@ export async function openLdpPath(path: string): Promise<void> {
       const { readTextFile } = await import("@tauri-apps/plugin-fs");
       raw = await readTextFile(path);
     } catch {
-      useToastStore.getState().show("error", `Could not open file: ${path}`);
+      useToastStore.getState().show("error", useI18nStore.getState().t("toast.couldNotOpenFile", { path }));
       return;
     }
   }

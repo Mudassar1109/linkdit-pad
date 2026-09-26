@@ -1,5 +1,9 @@
 export type ThemeMode = "light" | "dark" | "system";
 
+export type ThemeId = "midnight" | "obsidian" | "slate" | "arctic" | "paper" | "forest";
+
+export type AccentId = "blue" | "purple" | "cyan" | "green" | "orange" | "pink";
+
 export interface AccentColor {
   id: string;
   name: string;

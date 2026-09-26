@@ -1,6 +1,7 @@
 import { useBookmarksStore } from "@/store/useBookmarksStore";
 import { useEditorStore } from "@/store/useEditorStore";
 import { useEditorBridge } from "@/store/useEditorBridge";
+import { useI18nStore } from "@/store/useI18nStore";
 import { docPositionsForCharOffsets, plainLineCol } from "@/lib/bookmarkPositions";
 import type { Bookmark } from "@/types/bookmarks";
 
@@ -57,7 +58,9 @@ export function addBookmarkAtCursor(name?: string): void {
     }
   }
 
-  const fallback = lineText.trim().slice(0, 40) || `Bookmark ${existing.length + 1}`;
+  const fallback =
+    lineText.trim().slice(0, 40) ||
+    useI18nStore.getState().t("panels.bookmarks.defaultName", { count: existing.length + 1 });
   bookmarkStore.addBookmark(tab.meta.id, position, lineNumber, charPosition, name?.trim() || fallback);
 }
 

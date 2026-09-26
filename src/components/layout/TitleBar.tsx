@@ -9,6 +9,7 @@ import { saveFile } from "./Toolbar";
 import { markCleanExit } from "@/lib/sessionStore";
 import appLogo from "../../../src-tauri/icons/32 × 32 px.png";
 import type { Window as TauriWindow } from "@tauri-apps/api/window";
+import { useI18n } from "@/store/useI18nStore";
 
 /**
  * Frameless custom title bar. Talks to the Tauri window API when running
@@ -16,6 +17,7 @@ import type { Window as TauriWindow } from "@tauri-apps/api/window";
  * browser during `vite dev` so the UI can still be iterated on quickly.
  */
 export function TitleBar() {
+  const { t } = useI18n();
   const [isMaximized, setIsMaximized] = useState(false);
   const [appWindow, setAppWindow] = useState<TauriWindow | null>(null);
   const resolvedMode = useThemeStore((s) => s.resolvedMode);
@@ -48,7 +50,7 @@ export function TitleBar() {
     const hasDirty = Object.values(store.tabs).some((t) => t.meta.isDirty);
     if (hasDirty) {
       const action = await useConfirmStore.getState().show(
-        "You have unsaved changes. Save before closing?"
+        t("dialogs.confirm.unsavedBeforeClose")
       );
       if (action === "cancel") return;
       if (action === "save") {
@@ -76,31 +78,31 @@ export function TitleBar() {
           draggable={false}
           className="h-[18px] w-[18px] rounded-[5px] object-contain shadow-glow-sm"
         />
-        <span className="text-sm font-semibold tracking-tight">LinkDit Pad</span>
+        <span className="text-sm font-semibold tracking-tight">{t("titlebar.appName")}</span>
         <span className="hidden h-3 w-px bg-border/80 md:block" aria-hidden />
         <span className="hidden text-[11px] font-medium text-muted-foreground md:block">
-          Write &bull; Organize &bull; Create Better
+          {t("titlebar.tagline")}
         </span>
       </div>
 
       <div className="flex h-full">
-        <TitleBarButton label="Toggle theme" onClick={() => setThemeMode(resolvedMode === "dark" ? "light" : "dark")}>
+        <TitleBarButton label={t("titlebar.toggleTheme")} onClick={() => setThemeMode(resolvedMode === "dark" ? "light" : "dark")}>
           {resolvedMode === "dark" ? <Sun size={14} /> : <Moon size={14} />}
         </TitleBarButton>
-        <TitleBarButton label="Settings" onClick={() => toggleSettings()}>
+        <TitleBarButton label={t("titlebar.settings")} onClick={() => toggleSettings()}>
           <Settings size={14} />
         </TitleBarButton>
         <div className="mx-1 self-center h-4 w-px bg-border/80" aria-hidden />
-        <TitleBarButton label="Minimize" onClick={() => appWindow?.minimize()}>
+        <TitleBarButton label={t("titlebar.minimize")} onClick={() => appWindow?.minimize()}>
           <Minus size={14} />
         </TitleBarButton>
         <TitleBarButton
-          label={isMaximized ? "Restore" : "Maximize"}
+          label={isMaximized ? t("titlebar.restore") : t("titlebar.maximize")}
           onClick={() => appWindow?.toggleMaximize()}
         >
           {isMaximized ? <Copy size={12} /> : <Square size={12} />}
         </TitleBarButton>
-        <TitleBarButton label="Close" danger onClick={handleClose}>
+        <TitleBarButton label={t("titlebar.close")} danger onClick={handleClose}>
           <X size={14} />
         </TitleBarButton>
       </div>
